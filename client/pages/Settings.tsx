@@ -310,11 +310,65 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold text-foreground">Credit Cards</h2>
-              <Button className="gap-2">
+              <Button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 Add Card
               </Button>
             </div>
+
+            {showAddForm && (
+              <Card className="p-4 bg-muted/30">
+                <div className="flex gap-3 flex-col md:flex-row">
+                  <Input
+                    placeholder="Card Name (e.g., Personal Visa)"
+                    value={newCard.name}
+                    onChange={(e) =>
+                      setNewCard({ ...newCard, name: e.target.value })
+                    }
+                  />
+                  <Input
+                    placeholder="Last 4 digits"
+                    value={newCard.lastFour}
+                    onChange={(e) =>
+                      setNewCard({ ...newCard, lastFour: e.target.value })
+                    }
+                    maxLength={4}
+                  />
+                  <select
+                    value={newCard.type}
+                    onChange={(e) =>
+                      setNewCard({
+                        ...newCard,
+                        type: e.target.value as
+                          | "visa"
+                          | "mastercard"
+                          | "amex"
+                          | "other",
+                      })
+                    }
+                    className="px-3 py-2 bg-background border border-border rounded-lg text-foreground cursor-pointer"
+                  >
+                    <option value="visa">Visa</option>
+                    <option value="mastercard">Mastercard</option>
+                    <option value="amex">American Express</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <Button onClick={handleAddCard}>Save</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewCard({ name: "", lastFour: "", type: "visa" });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {creditCards.map((card) => (
