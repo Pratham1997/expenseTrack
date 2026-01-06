@@ -95,6 +95,20 @@ export default function Settings() {
     }
   };
 
+  const handleAddCard = () => {
+    if (newCard.name.trim() && newCard.lastFour.trim()) {
+      const card: CreditCard = {
+        id: Math.random().toString(),
+        name: newCard.name,
+        lastFour: newCard.lastFour,
+        type: newCard.type,
+      };
+      setCreditCards([...creditCards, card]);
+      setNewCard({ name: "", lastFour: "", type: "visa" });
+      setShowAddForm(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
