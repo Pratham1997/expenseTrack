@@ -50,7 +50,7 @@ export default function ExpenseForm() {
     spender: "You",
     type: "credit-card",
     date: new Date().toISOString().split("T")[0],
-    currency: "USD",
+    currency: "INR",
     notes: "",
     creditCard: "Personal Visa",
   });
