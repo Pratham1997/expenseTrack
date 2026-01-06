@@ -44,14 +44,22 @@ const MOCK_CREDIT_CARDS: CreditCard[] = [
   { id: "2", name: "Work Mastercard", lastFour: "5555", type: "mastercard" },
 ];
 
-export default function Settings() {
+interface SettingsProps {
+  tab?: "categories" | "spenders" | "cards";
+}
+
+export default function Settings({ tab = "categories" }: SettingsProps) {
   const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
   const [spenders, setSpenders] = useState<Spender[]>(MOCK_SPENDERS);
   const [creditCards, setCreditCards] = useState<CreditCard[]>(MOCK_CREDIT_CARDS);
 
   const [activeTab, setActiveTab] = useState<"categories" | "spenders" | "cards">(
-    "categories"
+    tab
   );
+
+  useEffect(() => {
+    setActiveTab(tab);
+  }, [tab]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", email: "", icon: "📝" });
   const [newCard, setNewCard] = useState({ name: "", lastFour: "", type: "visa" as const });
