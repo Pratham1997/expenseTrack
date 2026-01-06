@@ -28,6 +28,9 @@ const App = () => (
           <Route path="/expenses/:id/edit" element={<ExpenseForm />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/categories" element={<Settings tab="categories" />} />
+          <Route path="/settings/spenders" element={<Settings tab="spenders" />} />
+          <Route path="/settings/cards" element={<Settings tab="cards" />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -36,4 +39,5 @@ const App = () => (
   </QueryClientProvider>
 );
 
-createRoot(document.getElementById("root")!).render(<App />);
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);
