@@ -99,10 +99,12 @@ export default function Dashboard() {
         acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
 
-    const topCategory = Object.entries(categories).sort(([, a], [, b]) => b - a)[0];
+    const topCategory = Object.entries(categories).sort(
+      ([, a], [, b]) => b - a,
+    )[0];
 
     return {
       total,
@@ -123,7 +125,9 @@ export default function Dashboard() {
           <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Expenses
+                </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
                   ${stats.total.toFixed(2)}
                 </h3>
@@ -139,11 +143,15 @@ export default function Dashboard() {
           <Card className="p-6 bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">This Month</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  This Month
+                </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
                   ${stats.monthlyTotal.toFixed(2)}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">January 2024</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  January 2024
+                </p>
               </div>
               <div className="p-3 bg-secondary/20 rounded-lg">
                 <TrendingUp className="w-6 h-6 text-secondary" />
@@ -155,11 +163,15 @@ export default function Dashboard() {
           <Card className="p-6 bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Expenses
+                </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
                   {stats.expenseCount}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">Transactions</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Transactions
+                </p>
               </div>
               <div className="p-3 bg-accent/20 rounded-lg">
                 <PieChart className="w-6 h-6 text-accent" />
@@ -171,7 +183,9 @@ export default function Dashboard() {
           <Card className="p-6 bg-gradient-to-br from-orange-100/50 to-orange-50/50 border-orange-200">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Top Category</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Top Category
+                </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
                   {stats.topCategory?.[0] || "N/A"}
                 </h3>
@@ -192,7 +206,9 @@ export default function Dashboard() {
           <div className="lg:col-span-2">
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-foreground">Recent Expenses</h2>
+                <h2 className="text-lg font-bold text-foreground">
+                  Recent Expenses
+                </h2>
                 <Link to="/expenses">
                   <Button variant="ghost" size="sm">
                     View All
@@ -211,13 +227,19 @@ export default function Dashboard() {
                       className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-4 flex-1">
-                        <div className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center text-lg`}>
+                        <div
+                          className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center text-lg`}
+                        >
                           {TYPE_ICONS[expense.type] || "💰"}
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-foreground">{expense.description}</p>
+                          <p className="font-medium text-foreground">
+                            {expense.description}
+                          </p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${colors.bg} ${colors.text}`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${colors.bg} ${colors.text}`}
+                            >
                               {expense.category}
                             </span>
                             <span className="text-xs text-muted-foreground">
@@ -230,7 +252,9 @@ export default function Dashboard() {
                         <p className="font-bold text-foreground text-lg">
                           ${expense.amount.toFixed(2)}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">{expense.currency}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {expense.currency}
+                        </p>
                       </div>
                     </div>
                   );
@@ -242,7 +266,9 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="space-y-4">
             <Card className="p-6">
-              <h2 className="text-lg font-bold text-foreground mb-4">Quick Actions</h2>
+              <h2 className="text-lg font-bold text-foreground mb-4">
+                Quick Actions
+              </h2>
               <div className="space-y-3">
                 <Link to="/expenses/new">
                   <Button className="w-full" size="lg">
@@ -273,8 +299,12 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Monthly Limit</span>
-                    <span className="text-sm font-medium text-foreground">$2,000</span>
+                    <span className="text-sm text-muted-foreground">
+                      Monthly Limit
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      $2,000
+                    </span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div

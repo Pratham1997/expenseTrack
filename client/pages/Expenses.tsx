@@ -101,10 +101,22 @@ const MOCK_EXPENSES: Expense[] = [
   },
 ];
 
-const CATEGORIES = ["All", "Food", "Transport", "Utilities", "Entertainment", "Shopping"];
+const CATEGORIES = [
+  "All",
+  "Food",
+  "Transport",
+  "Utilities",
+  "Entertainment",
+  "Shopping",
+];
 const SPENDERS = ["All", "You", "Friend 1", "Friend 2"];
 const TYPES = ["All", "credit-card", "upi", "cash"];
-const SORT_OPTIONS = ["Date (Newest)", "Date (Oldest)", "Amount (High to Low)", "Amount (Low to High)"];
+const SORT_OPTIONS = [
+  "Date (Newest)",
+  "Date (Oldest)",
+  "Amount (High to Low)",
+  "Amount (Low to High)",
+];
 const GROUP_OPTIONS = ["None", "Category", "Spender", "Type", "Month"];
 
 const TYPE_ICONS: Record<string, string> = {
@@ -144,11 +156,16 @@ export default function Expenses() {
 
   const filteredAndSortedExpenses = useMemo(() => {
     let result = expenses.filter((expense) => {
-      const matchesCategory = filters.category === "All" || expense.category === filters.category;
-      const matchesSpender = filters.spender === "All" || expense.spender === filters.spender;
-      const matchesType = filters.type === "All" || expense.type === filters.type;
+      const matchesCategory =
+        filters.category === "All" || expense.category === filters.category;
+      const matchesSpender =
+        filters.spender === "All" || expense.spender === filters.spender;
+      const matchesType =
+        filters.type === "All" || expense.type === filters.type;
       const matchesSearch =
-        expense.description.toLowerCase().includes(filters.search.toLowerCase()) ||
+        expense.description
+          .toLowerCase()
+          .includes(filters.search.toLowerCase()) ||
         expense.category.toLowerCase().includes(filters.search.toLowerCase());
 
       return matchesCategory && matchesSpender && matchesType && matchesSearch;
@@ -210,7 +227,10 @@ export default function Expenses() {
     return grouped;
   }, [filteredAndSortedExpenses, groupBy]);
 
-  const totalAmount = filteredAndSortedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalAmount = filteredAndSortedExpenses.reduce(
+    (sum, exp) => sum + exp.amount,
+    0,
+  );
 
   const handleDelete = (id: string) => {
     // In a real app, this would delete from the backend
@@ -225,7 +245,10 @@ export default function Expenses() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Expenses</h1>
             <p className="text-muted-foreground mt-1">
-              Total: <span className="font-bold text-foreground">${totalAmount.toFixed(2)}</span>
+              Total:{" "}
+              <span className="font-bold text-foreground">
+                ${totalAmount.toFixed(2)}
+              </span>
             </p>
           </div>
           <Link to="/expenses/new">
@@ -259,9 +282,15 @@ export default function Expenses() {
               >
                 <Filter className="w-4 h-4" />
                 <span className="text-sm font-medium">Filters</span>
-                {Object.values(filters).some((v) => v !== "All" && v !== "") && (
+                {Object.values(filters).some(
+                  (v) => v !== "All" && v !== "",
+                ) && (
                   <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                    {Object.values(filters).filter((v) => v !== "All" && v !== "").length}
+                    {
+                      Object.values(filters).filter(
+                        (v) => v !== "All" && v !== "",
+                      ).length
+                    }
                   </span>
                 )}
               </button>
@@ -283,7 +312,9 @@ export default function Expenses() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Group by:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Group by:
+                  </span>
                   <select
                     value={groupBy}
                     onChange={(e) => setGroupBy(e.target.value as GroupBy)}
@@ -353,7 +384,11 @@ export default function Expenses() {
                   >
                     {TYPES.map((type) => (
                       <option key={type} value={type}>
-                        {type === "All" ? type : type === "credit-card" ? "Credit Card" : type.toUpperCase()}
+                        {type === "All"
+                          ? type
+                          : type === "credit-card"
+                            ? "Credit Card"
+                            : type.toUpperCase()}
                       </option>
                     ))}
                   </select>
@@ -369,9 +404,14 @@ export default function Expenses() {
             <div key={group}>
               {groupBy !== "None" && (
                 <div className="flex items-center gap-3 mb-4 px-1">
-                  <h3 className="text-lg font-semibold text-foreground">{group}</h3>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {group}
+                  </h3>
                   <span className="px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full">
-                    ${groupExpenses.reduce((sum, exp) => sum + exp.amount, 0).toFixed(2)}
+                    $
+                    {groupExpenses
+                      .reduce((sum, exp) => sum + exp.amount, 0)
+                      .toFixed(2)}
                   </span>
                 </div>
               )}
@@ -390,7 +430,9 @@ export default function Expenses() {
                     >
                       <div className="flex items-start gap-4">
                         {/* Icon */}
-                        <div className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center text-lg flex-shrink-0`}>
+                        <div
+                          className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center text-lg flex-shrink-0`}
+                        >
                           {TYPE_ICONS[expense.type] || "💰"}
                         </div>
 
@@ -402,7 +444,9 @@ export default function Expenses() {
                                 {expense.description}
                               </h4>
                               <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${colors.bg} ${colors.text}`}>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded-full font-medium ${colors.bg} ${colors.text}`}
+                                >
                                   {expense.category}
                                 </span>
                                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
@@ -423,7 +467,9 @@ export default function Expenses() {
                               <p className="font-bold text-lg text-foreground">
                                 ${expense.amount.toFixed(2)}
                               </p>
-                              <p className="text-xs text-muted-foreground">{expense.currency}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {expense.currency}
+                              </p>
                             </div>
                           </div>
                         </div>

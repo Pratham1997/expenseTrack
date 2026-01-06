@@ -51,18 +51,23 @@ interface SettingsProps {
 export default function Settings({ tab = "categories" }: SettingsProps) {
   const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
   const [spenders, setSpenders] = useState<Spender[]>(MOCK_SPENDERS);
-  const [creditCards, setCreditCards] = useState<CreditCard[]>(MOCK_CREDIT_CARDS);
+  const [creditCards, setCreditCards] =
+    useState<CreditCard[]>(MOCK_CREDIT_CARDS);
 
-  const [activeTab, setActiveTab] = useState<"categories" | "spenders" | "cards">(
-    tab
-  );
+  const [activeTab, setActiveTab] = useState<
+    "categories" | "spenders" | "cards"
+  >(tab);
 
   useEffect(() => {
     setActiveTab(tab);
   }, [tab]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", email: "", icon: "📝" });
-  const [newCard, setNewCard] = useState({ name: "", lastFour: "", type: "visa" as const });
+  const [newCard, setNewCard] = useState({
+    name: "",
+    lastFour: "",
+    type: "visa" as const,
+  });
 
   const handleDeleteCategory = (id: string) => {
     setCategories(categories.filter((cat) => cat.id !== id));
@@ -166,7 +171,9 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
         {activeTab === "categories" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-foreground">Expense Categories</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Expense Categories
+              </h2>
               <Button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="gap-2"
@@ -289,7 +296,9 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                       {spender.name}
                     </h3>
                     {spender.email && (
-                      <p className="text-sm text-muted-foreground">{spender.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {spender.email}
+                      </p>
                     )}
                   </div>
                   {spender.id !== "1" && (
@@ -317,7 +326,9 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
         {activeTab === "cards" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-foreground">Credit Cards</h2>
+              <h2 className="text-xl font-bold text-foreground">
+                Credit Cards
+              </h2>
               <Button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className="gap-2"

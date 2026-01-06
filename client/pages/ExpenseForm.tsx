@@ -32,11 +32,7 @@ const CATEGORIES = [
 const SPENDERS = ["You", "Alice Johnson", "Bob Smith"];
 const TYPES = ["credit-card", "upi", "cash"];
 const CURRENCIES = ["INR", "USD", "EUR", "GBP", "CAD", "AUD"];
-const CREDIT_CARDS = [
-  "Personal Visa",
-  "Work Mastercard",
-  "Business AmEx",
-];
+const CREDIT_CARDS = ["Personal Visa", "Work Mastercard", "Business AmEx"];
 
 export default function ExpenseForm() {
   const navigate = useNavigate();
@@ -122,7 +118,9 @@ export default function ExpenseForm() {
                 className={errors.description ? "border-red-500" : ""}
               />
               {errors.description && (
-                <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.description}
+                </p>
               )}
             </div>
 
@@ -238,10 +236,7 @@ export default function ExpenseForm() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      type: e.target.value as
-                        | "credit-card"
-                        | "upi"
-                        | "cash",
+                      type: e.target.value as "credit-card" | "upi" | "cash",
                     })
                   }
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground cursor-pointer"
@@ -313,8 +308,9 @@ export default function ExpenseForm() {
         <Card className="p-6 bg-blue-50 border-blue-200">
           <h3 className="font-semibold text-blue-900 mb-2">💡 Tip</h3>
           <p className="text-blue-800 text-sm">
-            You can track shared expenses and settle them later. Just select a friend
-            as the spender and you'll be able to see who owes whom in the dashboard.
+            You can track shared expenses and settle them later. Just select a
+            friend as the spender and you'll be able to see who owes whom in the
+            dashboard.
           </p>
         </Card>
       </div>

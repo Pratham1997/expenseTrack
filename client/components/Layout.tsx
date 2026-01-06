@@ -23,7 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           "bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
-          sidebarOpen ? "w-64" : "w-20"
+          sidebarOpen ? "w-64" : "w-20",
         )}
       >
         {/* Logo/Header */}
@@ -59,11 +59,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent",
                 )}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                {sidebarOpen && (
+                  <span className="text-sm font-medium">{item.label}</span>
+                )}
               </Link>
             );
           })}
@@ -75,11 +77,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             to="/expenses/new"
             className={cn(
               "flex items-center justify-center gap-2 px-4 py-3 bg-sidebar-primary text-sidebar-primary-foreground rounded-lg hover:opacity-90 transition-opacity",
-              !sidebarOpen && "justify-center"
+              !sidebarOpen && "justify-center",
             )}
           >
             <Plus className="w-5 h-5" />
-            {sidebarOpen && <span className="text-sm font-medium">New Expense</span>}
+            {sidebarOpen && (
+              <span className="text-sm font-medium">New Expense</span>
+            )}
           </Link>
         </div>
       </aside>
@@ -89,7 +93,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Top Bar */}
         <div className="bg-card border-b border-border px-8 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-foreground">
-            {NAVIGATION_ITEMS.find((item) => isActive(item.path))?.label || "ExpenseTrack"}
+            {NAVIGATION_ITEMS.find((item) => isActive(item.path))?.label ||
+              "ExpenseTrack"}
           </h2>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -115,9 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Page Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-8">
-            {children}
-          </div>
+          <div className="p-8">{children}</div>
         </div>
       </main>
     </div>

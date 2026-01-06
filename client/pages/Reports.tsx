@@ -225,7 +225,9 @@ export default function Reports() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Reports & Analytics
+          </h1>
           <p className="text-muted-foreground mt-1">
             Track your spending patterns and trends
           </p>
@@ -266,7 +268,9 @@ export default function Reports() {
                 </div>
               </div>
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-6">
-                <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Expenses
+                </p>
                 <h3 className="text-4xl font-bold text-foreground mt-2">
                   ${selectedMonthTotal.toFixed(2)}
                 </h3>
@@ -305,7 +309,11 @@ export default function Reports() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `$${(value as number).toFixed(2)}`} />
+                      <Tooltip
+                        formatter={(value) =>
+                          `$${(value as number).toFixed(2)}`
+                        }
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -326,7 +334,11 @@ export default function Reports() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" stroke="currentColor" />
                       <YAxis stroke="currentColor" />
-                      <Tooltip formatter={(value) => `$${(value as number).toFixed(2)}`} />
+                      <Tooltip
+                        formatter={(value) =>
+                          `$${(value as number).toFixed(2)}`
+                        }
+                      />
                       <Bar dataKey="value" fill="#8884d8" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -364,13 +376,17 @@ export default function Reports() {
                         key={cat.name}
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
-                        <td className="py-3 px-4 text-foreground">{cat.name}</td>
+                        <td className="py-3 px-4 text-foreground">
+                          {cat.name}
+                        </td>
                         <td className="text-right py-3 px-4 font-semibold text-foreground">
                           ${cat.value.toFixed(2)}
                         </td>
                         <td className="text-right py-3 px-4 text-muted-foreground">
                           {selectedMonthTotal > 0
-                            ? ((cat.value / selectedMonthTotal) * 100).toFixed(1)
+                            ? ((cat.value / selectedMonthTotal) * 100).toFixed(
+                                1,
+                              )
                             : 0}
                           %
                         </td>
@@ -412,7 +428,9 @@ export default function Reports() {
                       height={100}
                     />
                     <YAxis stroke="currentColor" />
-                    <Tooltip formatter={(value) => `$${(value as number).toFixed(2)}`} />
+                    <Tooltip
+                      formatter={(value) => `$${(value as number).toFixed(2)}`}
+                    />
                     <Legend />
                     <Line
                       type="monotone"
@@ -458,7 +476,9 @@ export default function Reports() {
                         key={year.year}
                         className="border-b border-border hover:bg-muted/50 transition-colors"
                       >
-                        <td className="py-3 px-4 text-foreground">{year.year}</td>
+                        <td className="py-3 px-4 text-foreground">
+                          {year.year}
+                        </td>
                         <td className="text-right py-3 px-4 font-semibold text-foreground">
                           ${year.amount.toFixed(2)}
                         </td>
