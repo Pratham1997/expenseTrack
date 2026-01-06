@@ -54,6 +54,7 @@ export default function Settings() {
   );
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", email: "", icon: "📝" });
+  const [newCard, setNewCard] = useState({ name: "", lastFour: "", type: "visa" as const });
 
   const handleDeleteCategory = (id: string) => {
     setCategories(categories.filter((cat) => cat.id !== id));
