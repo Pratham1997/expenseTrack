@@ -31,7 +31,7 @@ const CATEGORIES = [
 ];
 const SPENDERS = ["You", "Alice Johnson", "Bob Smith"];
 const TYPES = ["credit-card", "upi", "cash"];
-const CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD"];
+const CURRENCIES = ["INR", "USD", "EUR", "GBP", "CAD", "AUD"];
 const CREDIT_CARDS = [
   "Personal Visa",
   "Work Mastercard",
