@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Wallet, TrendingUp, Settings, Plus } from "lucide-react";
+import { Menu, X, Wallet, TrendingUp, Settings, Plus, LayoutList, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 const NAVIGATION_ITEMS = [
   { path: "/", label: "Dashboard", icon: Wallet },
-  { path: "/expenses", label: "Expenses", icon: TrendingUp },
+  { path: "/expenses", label: "Expenses", icon: LayoutList },
   { path: "/reports", label: "Reports", icon: TrendingUp },
+  { path: "/notes", label: "Notes", icon: StickyNote },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
