@@ -7,6 +7,7 @@ import { createServer } from "./server";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
+    allowedHosts: ["localhost", "127.0.0.1", "::", "expense-tracker-k2dr.onrender.com"],
     port: 8080,
     fs: {
       allow: ["."],
