@@ -99,8 +99,8 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Total Expenses
                 </p>
-                <h3 className="text-3xl font-bold text-foreground mt-2">
-                  {formatCurrency(stats.total)}
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mt-2 truncate whitespace-nowrap" title={formatCurrency(stats.total)}>
+                  {formatCurrency(stats.total, "INR", 0)}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">All time</p>
               </div>
@@ -117,8 +117,8 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-muted-foreground">
                   This Month
                 </p>
-                <h3 className="text-3xl font-bold text-foreground mt-2">
-                  {formatCurrency(stats.monthlyTotal)}
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mt-2 truncate whitespace-nowrap" title={formatCurrency(stats.monthlyTotal)}>
+                  {formatCurrency(stats.monthlyTotal, "INR", 0)}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   {currentMonthName}
@@ -135,9 +135,9 @@ export default function Dashboard() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Expenses
+                  Transactions
                 </p>
-                <h3 className="text-3xl font-bold text-foreground mt-2">
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mt-2">
                   {stats.expenseCount}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
