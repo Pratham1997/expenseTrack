@@ -114,15 +114,15 @@ export default function Expenses() {
   const [sort, setSort] = useState<string>("Date (Newest)");
   const [groupBy, setGroupBy] = useState<GroupBy>("None");
   const [showFilters, setShowFilters] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  // Reset collapsed groups when grouping changes
+  // Reset expanded groups when grouping changes
   useEffect(() => {
-    setCollapsedGroups({});
+    setExpandedGroups({});
   }, [groupBy]);
 
   const toggleGroup = (groupName: string) => {
-    setCollapsedGroups(prev => ({
+    setExpandedGroups(prev => ({
       ...prev,
       [groupName]: !prev[groupName]
     }));
@@ -553,10 +553,10 @@ export default function Expenses() {
                   className="flex items-center gap-3 mb-4 px-1 cursor-pointer hover:opacity-80 transition-opacity w-fit"
                   onClick={() => toggleGroup(group)}
                 >
-                  {collapsedGroups[group] ? (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  ) : (
+                  {expandedGroups[group] ? (
                     <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   )}
                   <h3 className="text-lg font-semibold text-foreground">
                     {group}
@@ -568,7 +568,7 @@ export default function Expenses() {
                 </div>
               )}
 
-              {!collapsedGroups[group] && (
+              {(groupBy === "None" || expandedGroups[group]) && (
                 <div className="space-y-3">
                   {groupExpenses.map((expense) => {
                     const safeBadgeClass = "bg-secondary text-secondary-foreground";
