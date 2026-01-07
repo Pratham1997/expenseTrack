@@ -6,6 +6,7 @@
 @tailwind utilities;
 
 @layer base {
+
   /**
    * Tailwind CSS theme
    * tailwind.config.ts expects the following color variables to be expressed as HSL values.
@@ -117,4 +118,16 @@
     overflow-x: auto;
     white-space: pre;
   }
+}
+
+/* Rich Text Editor Placeholder */
+[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  cursor: text;
+  opacity: 0.6;
+}
+
+[contenteditable]:focus::before {
+  content: "";
 }

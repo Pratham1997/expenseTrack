@@ -18,7 +18,12 @@ interface MonthlyNote {
 }
 
 export default function Notes() {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    // Pin initial date to the 1st to avoid day overflow issues
+    const [currentDate, setCurrentDate] = useState(() => {
+        const d = new Date();
+        d.setDate(1);
+        return d;
+    });
     const [noteContent, setNoteContent] = useState("");
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -50,13 +55,6 @@ export default function Notes() {
             editorRef.current.innerHTML = content;
         }
     }, [currentNote]);
-
-    // Update editor content when switching date
-    useEffect(() => {
-        if (editorRef.current && editorRef.current.innerHTML !== noteContent) {
-            editorRef.current.innerHTML = noteContent;
-        }
-    }, [currentDate]);
 
     // Mutation to save/update note
     const saveNoteMutation = useMutation({
@@ -104,11 +102,17 @@ export default function Notes() {
     });
 
     const handlePrevMonth = () => {
-        setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
+        const d = new Date(currentDate);
+        d.setDate(1); // Ensure we are on the 1st before switching
+        d.setMonth(d.getMonth() - 1);
+        setCurrentDate(d);
     };
 
     const handleNextMonth = () => {
-        setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
+        const d = new Date(currentDate);
+        d.setDate(1); // Ensure we are on the 1st before switching
+        d.setMonth(d.getMonth() + 1);
+        setCurrentDate(d);
     };
 
     const handleSave = () => {
@@ -171,7 +175,7 @@ export default function Notes() {
                 </div>
 
                 {/* Editor Area */}
-                <Card className="min-h-[500px] flex flex-col p-6 shadow-sm overflow-hidden">
+                <Card key={`${year}-${month}`} className="min-h-[500px] flex flex-col p-6 shadow-sm overflow-hidden">
                     <div className="flex items-center gap-1 mb-4 pb-4 border-b border-border">
                         <Button
                             variant="ghost"
