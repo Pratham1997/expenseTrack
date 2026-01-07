@@ -16,122 +16,30 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
-import { Calendar } from "lucide-react";
+import { Calendar, TrendingUp, Users, Smartphone } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { formatCurrency } from "@/lib/utils";
 
+// --- Types ---
 interface Expense {
-  id: string;
-  amount: number;
-  category: string;
-  date: string;
-  description: string;
-  spender: string;
-  type: "credit-card" | "upi" | "cash";
-  currency: string;
+  id: number;
+  amountOriginal: string;
+  amountConverted: string;
+  currencyOriginal: string;
+  expenseDate: string;
+  notes: string | null;
+  category: { id: number; name: string; icon: string | null; color: string | null } | null;
+  paidByPerson: { id: number; name: string } | null;
+  paymentMethod: { id: number; name: string } | null;
+  expenseApp: { id: number; name: string } | null;
+  type?: string;
 }
-
-const MOCK_EXPENSES: Expense[] = [
-  {
-    id: "1",
-    amount: 450,
-    category: "Food",
-    date: "2024-01-15",
-    description: "Lunch",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "2",
-    amount: 1200,
-    category: "Transport",
-    date: "2024-01-14",
-    description: "Uber",
-    spender: "You",
-    type: "upi",
-    currency: "INR",
-  },
-  {
-    id: "3",
-    amount: 5000,
-    category: "Utilities",
-    date: "2024-01-13",
-    description: "Electricity",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-  {
-    id: "4",
-    amount: 750,
-    category: "Entertainment",
-    date: "2024-01-12",
-    description: "Movies",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "5",
-    amount: 2000,
-    category: "Shopping",
-    date: "2024-01-11",
-    description: "Groceries",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-  {
-    id: "6",
-    amount: 850,
-    category: "Food",
-    date: "2024-01-10",
-    description: "Coffee",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-  {
-    id: "7",
-    amount: 3000,
-    category: "Shopping",
-    date: "2024-01-09",
-    description: "Clothes",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "8",
-    amount: 1500,
-    category: "Transport",
-    date: "2023-12-25",
-    description: "Gas",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-  {
-    id: "9",
-    amount: 2200,
-    category: "Food",
-    date: "2023-12-20",
-    description: "Restaurant",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "10",
-    amount: 4000,
-    category: "Entertainment",
-    date: "2023-12-15",
-    description: "Tickets",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-];
 
 const COLORS = {
   Food: "#f97316",
@@ -139,20 +47,41 @@ const COLORS = {
   Utilities: "#ef4444",
   Entertainment: "#a855f7",
   Shopping: "#10b981",
+  Health: "#ec4899",
+  Education: "#8b5cf6",
+  Other: "#6b7280",
 };
 
-export default function Reports() {
-  const [expenses] = useState<Expense[]>(MOCK_EXPENSES);
-  const [reportType, setReportType] = useState<"monthly" | "yearly">("monthly");
-  const [selectedMonth, setSelectedMonth] = useState("2024-01");
-  const [selectedYear, setSelectedYear] = useState("2024");
+const CHART_COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
 
-  // Monthly breakdown data
+export default function Reports() {
+  const [reportType, setReportType] = useState<"monthly" | "yearly" | "custom">("monthly");
+
+  // Default to current month/year
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear().toString());
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
+  // --- Data Fetching ---
+  const { data: expenses = [], isLoading, error } = useQuery<Expense[]>({
+    queryKey: ["expenses"],
+    queryFn: async () => {
+      const res = await fetch(`/api/expenses?limit=1000`);
+      if (!res.ok) throw new Error("Failed to fetch expenses");
+      return res.json();
+    },
+  });
+
+
+  // Monthly breakdown data (All time trend)
   const monthlyData = useMemo(() => {
     const months: Record<string, number> = {};
     expenses.forEach((exp) => {
-      const month = exp.date.substring(0, 7);
-      months[month] = (months[month] || 0) + exp.amount;
+      const month = exp.expenseDate.substring(0, 7);
+      months[month] = (months[month] || 0) + parseFloat(exp.amountConverted);
     });
     return Object.entries(months)
       .sort()
@@ -165,13 +94,15 @@ export default function Reports() {
       }));
   }, [expenses]);
 
+
   // Category breakdown for selected month
   const categoryData = useMemo(() => {
     const categories: Record<string, number> = {};
     expenses
-      .filter((exp) => exp.date.startsWith(selectedMonth))
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
       .forEach((exp) => {
-        categories[exp.category] = (categories[exp.category] || 0) + exp.amount;
+        const catName = exp.category?.name || "Uncategorized";
+        categories[catName] = (categories[catName] || 0) + parseFloat(exp.amountConverted);
       });
     return Object.entries(categories)
       .map(([category, amount]) => ({
@@ -185,13 +116,66 @@ export default function Reports() {
   const typeData = useMemo(() => {
     const types: Record<string, number> = {};
     expenses
-      .filter((exp) => exp.date.startsWith(selectedMonth))
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
       .forEach((exp) => {
-        types[exp.type] = (types[exp.type] || 0) + exp.amount;
+        const typeName = exp.paymentMethod?.name || "Unknown";
+        types[typeName] = (types[typeName] || 0) + parseFloat(exp.amountConverted);
       });
     return Object.entries(types).map(([type, amount]) => ({
-      name: type === "credit-card" ? "Credit Card" : type.toUpperCase(),
+      name: type,
       value: parseFloat(amount.toFixed(2)),
+    }));
+  }, [expenses, selectedMonth]);
+
+  // App breakdown for selected month
+  const appData = useMemo(() => {
+    const apps: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
+      .forEach((exp) => {
+        const appName = exp.expenseApp?.name || "Manual";
+        apps[appName] = (apps[appName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(apps)
+      .map(([app, amount]) => ({
+        name: app,
+        value: parseFloat(amount.toFixed(2)),
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Top 10 apps
+  }, [expenses, selectedMonth]);
+
+  // Spender breakdown for selected month
+  const spenderData = useMemo(() => {
+    const spenders: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
+      .forEach((exp) => {
+        const spenderName = exp.paidByPerson?.name || "Me";
+        spenders[spenderName] = (spenders[spenderName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(spenders).map(([spender, amount]) => ({
+      name: spender,
+      value: parseFloat(amount.toFixed(2)),
+    }));
+  }, [expenses, selectedMonth]);
+
+  // Day of week analysis
+  const dayOfWeekData = useMemo(() => {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayTotals: Record<string, number> = {};
+
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
+      .forEach((exp) => {
+        const dayIndex = new Date(exp.expenseDate).getDay();
+        const dayName = days[dayIndex];
+        dayTotals[dayName] = (dayTotals[dayName] || 0) + parseFloat(exp.amountConverted);
+      });
+
+    return days.map(day => ({
+      day,
+      amount: parseFloat((dayTotals[day] || 0).toFixed(2)),
     }));
   }, [expenses, selectedMonth]);
 
@@ -199,8 +183,8 @@ export default function Reports() {
   const yearlyData = useMemo(() => {
     const years: Record<string, number> = {};
     expenses.forEach((exp) => {
-      const year = exp.date.substring(0, 4);
-      years[year] = (years[year] || 0) + exp.amount;
+      const year = exp.expenseDate.substring(0, 4);
+      years[year] = (years[year] || 0) + parseFloat(exp.amountConverted);
     });
     return Object.entries(years)
       .sort()
@@ -212,13 +196,43 @@ export default function Reports() {
 
   const selectedMonthTotal =
     expenses
-      .filter((exp) => exp.date.startsWith(selectedMonth))
-      .reduce((sum, exp) => sum + exp.amount, 0) || 0;
+      .filter((exp) => exp.expenseDate.startsWith(selectedMonth))
+      .reduce((sum, exp) => sum + parseFloat(exp.amountConverted), 0) || 0;
 
   const selectedYearTotal =
     expenses
-      .filter((exp) => exp.date.startsWith(selectedYear))
-      .reduce((sum, exp) => sum + exp.amount, 0) || 0;
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .reduce((sum, exp) => sum + parseFloat(exp.amountConverted), 0) || 0;
+
+  const customRangeTotal = useMemo(() => {
+    if (!customStartDate || !customEndDate) return 0;
+    const startDate = new Date(customStartDate);
+    const endDate = new Date(customEndDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    return expenses
+      .filter((exp) => {
+        const expDate = new Date(exp.expenseDate);
+        return expDate >= startDate && expDate <= endDate;
+      })
+      .reduce((sum, exp) => sum + parseFloat(exp.amountConverted), 0) || 0;
+  }, [expenses, customStartDate, customEndDate]);
+
+  // Custom range filtered expenses
+  const customRangeExpenses = useMemo(() => {
+    if (!customStartDate || !customEndDate) return [];
+    const startDate = new Date(customStartDate);
+    const endDate = new Date(customEndDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    return expenses.filter((exp) => {
+      const expDate = new Date(exp.expenseDate);
+      return expDate >= startDate && expDate <= endDate;
+    });
+  }, [expenses, customStartDate, customEndDate]);
+
+  if (isLoading) return <Layout><div className="flex justify-center p-8">Loading reports...</div></Layout>;
+  if (error) return <Layout><div className="text-red-500 p-8">Error loading reports</div></Layout>;
 
   return (
     <Layout>
@@ -247,6 +261,12 @@ export default function Reports() {
           >
             Yearly
           </Button>
+          {/* <Button
+            variant={reportType === "custom" ? "default" : "outline"}
+            onClick={() => setReportType("custom")}
+          >
+            Custom Range
+          </Button> */}
         </div>
 
         {reportType === "monthly" ? (
@@ -272,12 +292,49 @@ export default function Reports() {
                   Total Expenses
                 </p>
                 <h3 className="text-4xl font-bold text-foreground mt-2">
-                  ${selectedMonthTotal.toFixed(2)}
+                  {formatCurrency(selectedMonthTotal)}
                 </h3>
               </div>
             </Card>
 
-            {/* Monthly Charts */}
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Categories</p>
+                    <p className="text-xl font-bold text-foreground">{categoryData.length}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <Smartphone className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Apps Used</p>
+                    <p className="text-xl font-bold text-foreground">{appData.length}</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Users className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Spenders</p>
+                    <p className="text-xl font-bold text-foreground">{spenderData.length}</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Monthly Charts - Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Category Distribution */}
               <Card className="p-6">
@@ -293,7 +350,7 @@ export default function Reports() {
                         cy="50%"
                         labelLine={false}
                         label={({ name, value }) =>
-                          `${name}: $${value.toFixed(2)}`
+                          `${name}: ${formatCurrency(value)}`
                         }
                         outerRadius={80}
                         fill="#8884d8"
@@ -304,14 +361,14 @@ export default function Reports() {
                             key={`cell-${index}`}
                             fill={
                               COLORS[entry.name as keyof typeof COLORS] ||
-                              "#666"
+                              CHART_COLORS[index % CHART_COLORS.length]
                             }
                           />
                         ))}
                       </Pie>
                       <Tooltip
                         formatter={(value) =>
-                          `$${(value as number).toFixed(2)}`
+                          formatCurrency(value as number)
                         }
                       />
                     </PieChart>
@@ -326,7 +383,7 @@ export default function Reports() {
               {/* Payment Type Distribution */}
               <Card className="p-6">
                 <h3 className="text-lg font-bold text-foreground mb-4">
-                  By Payment Type
+                  By Payment Method
                 </h3>
                 {typeData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
@@ -336,7 +393,7 @@ export default function Reports() {
                       <YAxis stroke="currentColor" />
                       <Tooltip
                         formatter={(value) =>
-                          `$${(value as number).toFixed(2)}`
+                          formatCurrency(value as number)
                         }
                       />
                       <Bar dataKey="value" fill="#8884d8" />
@@ -349,6 +406,102 @@ export default function Reports() {
                 )}
               </Card>
             </div>
+
+            {/* Monthly Charts - Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* App Distribution */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4">
+                  By App (Top 10)
+                </h3>
+                {appData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={appData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" stroke="currentColor" />
+                      <YAxis dataKey="name" type="category" width={100} stroke="currentColor" />
+                      <Tooltip
+                        formatter={(value) =>
+                          formatCurrency(value as number)
+                        }
+                      />
+                      <Bar dataKey="value" fill="#10b981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-72 flex items-center justify-center text-muted-foreground">
+                    No data available
+                  </div>
+                )}
+              </Card>
+
+              {/* Spender Distribution */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4">
+                  By Spender
+                </h3>
+                {spenderData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={spenderData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) =>
+                          `${name}: ${formatCurrency(value)}`
+                        }
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {spenderData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) =>
+                          formatCurrency(value as number)
+                        }
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-72 flex items-center justify-center text-muted-foreground">
+                    No data available
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Day of Week Analysis */}
+            <Card className="p-6">
+              <h3 className="text-lg font-bold text-foreground mb-4">
+                Spending by Day of Week
+              </h3>
+              {dayOfWeekData.some(d => d.amount > 0) ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={dayOfWeekData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" stroke="currentColor" />
+                    <YAxis stroke="currentColor" />
+                    <Tooltip
+                      formatter={(value) =>
+                        formatCurrency(value as number)
+                      }
+                    />
+                    <Bar dataKey="amount" fill="#8b5cf6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-72 flex items-center justify-center text-muted-foreground">
+                  No data available
+                </div>
+              )}
+            </Card>
 
             {/* Category Details Table */}
             <Card className="p-6">
@@ -380,13 +533,13 @@ export default function Reports() {
                           {cat.name}
                         </td>
                         <td className="text-right py-3 px-4 font-semibold text-foreground">
-                          ${cat.value.toFixed(2)}
+                          {formatCurrency(cat.value)}
                         </td>
                         <td className="text-right py-3 px-4 text-muted-foreground">
                           {selectedMonthTotal > 0
                             ? ((cat.value / selectedMonthTotal) * 100).toFixed(
-                                1,
-                              )
+                              1,
+                            )
                             : 0}
                           %
                         </td>
@@ -401,12 +554,28 @@ export default function Reports() {
           <>
             {/* Yearly Report */}
             <Card className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <Calendar className="w-5 h-5 text-primary" />
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Select Year
+                  </label>
+                  <input
+                    type="number"
+                    min="2000"
+                    max={new Date().getFullYear() + 1}
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="px-4 py-2 bg-background border border-border rounded-lg text-foreground w-32"
+                  />
+                </div>
+              </div>
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-6">
                 <p className="text-sm font-medium text-muted-foreground">
                   Total Expenses ({selectedYear})
                 </p>
                 <h3 className="text-4xl font-bold text-foreground mt-2">
-                  ${selectedYearTotal.toFixed(2)}
+                  {formatCurrency(selectedYearTotal)}
                 </h3>
               </div>
             </Card>
@@ -429,7 +598,7 @@ export default function Reports() {
                     />
                     <YAxis stroke="currentColor" />
                     <Tooltip
-                      formatter={(value) => `$${(value as number).toFixed(2)}`}
+                      formatter={(value) => formatCurrency(value as number)}
                     />
                     <Legend />
                     <Line
@@ -480,10 +649,10 @@ export default function Reports() {
                           {year.year}
                         </td>
                         <td className="text-right py-3 px-4 font-semibold text-foreground">
-                          ${year.amount.toFixed(2)}
+                          {formatCurrency(year.amount)}
                         </td>
                         <td className="text-right py-3 px-4 text-muted-foreground">
-                          ${(year.amount / 12).toFixed(2)}
+                          {formatCurrency(year.amount / 12)}
                         </td>
                       </tr>
                     ))}

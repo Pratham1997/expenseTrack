@@ -3,80 +3,24 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
+// --- Types ---
+// Matches the structure returned by /api/expenses
 interface Expense {
-  id: string;
-  amount: number;
-  category: string;
-  date: string;
-  description: string;
-  spender: string;
-  type: "credit-card" | "upi" | "cash";
-  currency: string;
+  id: number;
+  amountOriginal: string;
+  amountConverted: string;
+  currencyOriginal: string;
+  expenseDate: string;
+  notes: string | null;
+  category: { id: number; name: string; icon: string | null; color: string | null } | null;
+  paidByPerson: { id: number; name: string } | null;
+  paymentMethod: { id: number; name: string } | null;
+  expenseApp: { id: number; name: string } | null;
 }
-
-// Mock data for demonstration
-const MOCK_EXPENSES: Expense[] = [
-  {
-    id: "1",
-    amount: 450,
-    category: "Food",
-    date: "2024-01-15",
-    description: "Lunch at restaurant",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "2",
-    amount: 1200,
-    category: "Transport",
-    date: "2024-01-14",
-    description: "Uber ride",
-    spender: "You",
-    type: "upi",
-    currency: "INR",
-  },
-  {
-    id: "3",
-    amount: 5000,
-    category: "Utilities",
-    date: "2024-01-13",
-    description: "Monthly electricity bill",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-  {
-    id: "4",
-    amount: 750,
-    category: "Entertainment",
-    date: "2024-01-12",
-    description: "Movie tickets",
-    spender: "You",
-    type: "credit-card",
-    currency: "INR",
-  },
-  {
-    id: "5",
-    amount: 2000,
-    category: "Shopping",
-    date: "2024-01-11",
-    description: "Groceries",
-    spender: "You",
-    type: "cash",
-    currency: "INR",
-  },
-];
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  Food: { bg: "bg-orange-100", text: "text-orange-700" },
-  Transport: { bg: "bg-blue-100", text: "text-blue-700" },
-  Utilities: { bg: "bg-red-100", text: "text-red-700" },
-  Entertainment: { bg: "bg-purple-100", text: "text-purple-700" },
-  Shopping: { bg: "bg-green-100", text: "text-green-700" },
-};
 
 const TYPE_ICONS: Record<string, string> = {
   "credit-card": "💳",
@@ -85,18 +29,35 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const [expenses] = useState<Expense[]>(MOCK_EXPENSES);
 
+  // --- Data Fetching ---
+  const { data: expenses = [], isLoading, error } = useQuery<Expense[]>({
+    queryKey: ["expenses"],
+    queryFn: async () => {
+      // Fetch all for stats
+      const res = await fetch(`/api/expenses?limit=1000`);
+      if (!res.ok) throw new Error("Failed to fetch expenses");
+      return res.json();
+    },
+  });
+
+  // --- Stats Calculation ---
   const stats = useMemo(() => {
-    const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.amountConverted), 0);
     const currentMonth = new Date().getMonth();
-    const monthlyTotal = expenses
-      .filter((exp) => new Date(exp.date).getMonth() === currentMonth)
-      .reduce((sum, exp) => sum + exp.amount, 0);
+    const currentYear = new Date().getFullYear();
+
+    const monthlyExpenses = expenses.filter((exp) => {
+      const d = new Date(exp.expenseDate);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const monthlyTotal = monthlyExpenses.reduce((sum, exp) => sum + parseFloat(exp.amountConverted), 0);
 
     const categories = expenses.reduce(
       (acc, exp) => {
-        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
+        const catName = exp.category?.name || "Uncategorized";
+        acc[catName] = (acc[catName] || 0) + parseFloat(exp.amountConverted);
         return acc;
       },
       {} as Record<string, number>,
@@ -114,7 +75,17 @@ export default function Dashboard() {
     };
   }, [expenses]);
 
-  const recentExpenses = expenses.slice(0, 5);
+  // Sort by date (newest first)
+  const sortedExpenses = useMemo(() => {
+    return [...expenses].sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+  }, [expenses]);
+
+  const recentExpenses = sortedExpenses.slice(0, 5);
+
+  const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  if (isLoading) return <Layout><div className="flex justify-center p-8">Loading dashboard...</div></Layout>;
+  if (error) return <Layout><div className="text-red-500 p-8">Error loading dashboard</div></Layout>;
 
   return (
     <Layout>
@@ -129,7 +100,7 @@ export default function Dashboard() {
                   Total Expenses
                 </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
-                  ${stats.total.toFixed(2)}
+                  {formatCurrency(stats.total)}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">All time</p>
               </div>
@@ -147,10 +118,10 @@ export default function Dashboard() {
                   This Month
                 </p>
                 <h3 className="text-3xl font-bold text-foreground mt-2">
-                  ${stats.monthlyTotal.toFixed(2)}
+                  {formatCurrency(stats.monthlyTotal)}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  January 2024
+                  {currentMonthName}
                 </p>
               </div>
               <div className="p-3 bg-secondary/20 rounded-lg">
@@ -190,7 +161,7 @@ export default function Dashboard() {
                   {stats.topCategory?.[0] || "N/A"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  ${(stats.topCategory?.[1] || 0).toFixed(2)}
+                  {formatCurrency(stats.topCategory?.[1] || 0)}
                 </p>
               </div>
               <div className="p-3 bg-orange-200 rounded-lg">
@@ -217,10 +188,11 @@ export default function Dashboard() {
               </div>
               <div className="space-y-3">
                 {recentExpenses.map((expense) => {
-                  const colors = CATEGORY_COLORS[expense.category] || {
-                    bg: "bg-gray-100",
-                    text: "text-gray-700",
-                  };
+                  const safeBadgeClass = "bg-secondary text-secondary-foreground";
+                  const typeIconKey = expense.paymentMethod?.name === "Credit Card" ? "credit-card" :
+                    expense.paymentMethod?.name === "UPI" ? "upi" :
+                      expense.paymentMethod?.name === "Cash" ? "cash" : "cash"; // Simple fallback mapping
+
                   return (
                     <div
                       key={expense.id}
@@ -228,32 +200,36 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center gap-4 flex-1">
                         <div
-                          className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center text-lg`}
+                          className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg"
                         >
-                          {TYPE_ICONS[expense.type] || "💰"}
+                          {expense.category?.icon || "💰"}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-foreground">
-                            {expense.description}
+                            {expense.notes || "Expense"}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <span
-                              className={`text-xs px-2 py-1 rounded-full font-medium ${colors.bg} ${colors.text}`}
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${safeBadgeClass}`}
+                              style={{
+                                backgroundColor: expense.category?.color ? `${expense.category.color}20` : undefined,
+                                color: expense.category?.color || undefined,
+                              }}
                             >
-                              {expense.category}
+                              {expense.category?.name || "Uncategorized"}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(expense.date).toLocaleDateString()}
+                              {new Date(expense.expenseDate).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-foreground text-lg">
-                          ${expense.amount.toFixed(2)}
+                          {formatCurrency(parseFloat(expense.amountConverted))}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {expense.currency}
+                          {expense.currencyOriginal}
                         </p>
                       </div>
                     </div>
@@ -285,6 +261,11 @@ export default function Dashboard() {
                     Manage Spenders
                   </Button>
                 </Link>
+                <Link to="/settings/apps">
+                  <Button variant="outline" className="w-full">
+                    Manage Apps
+                  </Button>
+                </Link>
                 <Link to="/reports">
                   <Button variant="outline" className="w-full">
                     View Reports
@@ -294,30 +275,6 @@ export default function Dashboard() {
             </Card>
 
             {/* Monthly Summary */}
-            <Card className="p-6">
-              <h3 className="font-bold text-foreground mb-4">Budget Status</h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
-                      Monthly Limit
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      $2,000
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-secondary to-primary h-2 rounded-full transition-all"
-                      style={{ width: `${(stats.monthlyTotal / 2000) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    ${(2000 - stats.monthlyTotal).toFixed(2)} remaining
-                  </p>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       </div>

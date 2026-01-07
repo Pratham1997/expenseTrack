@@ -1,9 +1,20 @@
 import { RequestHandler } from "express";
 import { DemoResponse } from "@shared/api";
 
-export const handleDemo: RequestHandler = (req, res) => {
-  const response: DemoResponse = {
-    message: "Hello from Express server",
-  };
-  res.status(200).json(response);
+import { sql } from "drizzle-orm";
+import { db } from "../db";
+
+export const handleDemo: RequestHandler = async (req, res) => {
+  try {
+    await db.execute(sql`SELECT 1`);
+    const response: DemoResponse = {
+      message: "Database connection successful",
+    };
+    res.json(response);
+  } catch (error) {
+    const response: DemoResponse = {
+      message: `Database connection failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+    res.status(500).json(response);
+  }
 };

@@ -3,124 +3,478 @@ import Layout from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, X } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
+// --- Types ---
 interface Category {
-  id: string;
+  id: number;
   name: string;
-  icon: string;
-  color: string;
+  icon: string | null;
+  color: string | null;
+  description: string | null;
 }
 
-interface Spender {
-  id: string;
+interface Person {
+  id: number;
   name: string;
-  email?: string;
+  notes: string | null;
+  relationshipType: string | null;
 }
 
 interface CreditCard {
-  id: string;
-  name: string;
-  lastFour: string;
-  type: "visa" | "mastercard" | "amex" | "other";
+  id: number;
+  cardName: string;
+  last4: string | null;
+  bankName: string | null; // using this for "type"
+  paymentMethodId: number;
 }
 
-const MOCK_CATEGORIES: Category[] = [
-  { id: "1", name: "Food", icon: "🍔", color: "orange" },
-  { id: "2", name: "Transport", icon: "🚗", color: "blue" },
-  { id: "3", name: "Utilities", icon: "💡", color: "red" },
-  { id: "4", name: "Entertainment", icon: "🎬", color: "purple" },
-  { id: "5", name: "Shopping", icon: "🛍️", color: "green" },
-];
+interface PaymentMethod {
+  id: number;
+  name: string;
+}
 
-const MOCK_SPENDERS: Spender[] = [
-  { id: "1", name: "You" },
-  { id: "2", name: "Alice Johnson", email: "alice@example.com" },
-  { id: "3", name: "Bob Smith", email: "bob@example.com" },
-];
+interface ExpenseApp {
+  id: number;
+  name: string;
+  description: string | null;
+}
 
-const MOCK_CREDIT_CARDS: CreditCard[] = [
-  { id: "1", name: "Personal Visa", lastFour: "4242", type: "visa" },
-  { id: "2", name: "Work Mastercard", lastFour: "5555", type: "mastercard" },
-];
+const USER_ID = 1; // Hardcoded for now until Auth is ready
 
 interface SettingsProps {
-  tab?: "categories" | "spenders" | "cards";
+  tab?: "categories" | "spenders" | "cards" | "apps";
 }
 
 export default function Settings({ tab = "categories" }: SettingsProps) {
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
-  const [spenders, setSpenders] = useState<Spender[]>(MOCK_SPENDERS);
-  const [creditCards, setCreditCards] =
-    useState<CreditCard[]>(MOCK_CREDIT_CARDS);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"categories" | "spenders" | "cards" | "apps">(tab);
 
-  const [activeTab, setActiveTab] = useState<
-    "categories" | "spenders" | "cards"
-  >(tab);
-
-  useEffect(() => {
-    setActiveTab(tab);
-  }, [tab]);
+  // Forms state
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", email: "", icon: "📝" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Category Form State
+  const [newCategory, setNewCategory] = useState({ name: "", icon: "📝", color: "gray" });
+
+  // Person Form State
+  const [newPerson, setNewPerson] = useState<any>({ name: "", notes: "" });
+
+  // Card Form State
   const [newCard, setNewCard] = useState({
     name: "",
     lastFour: "",
-    type: "visa" as const,
+    type: "visa", // Will map to bankName
   });
 
-  const handleDeleteCategory = (id: string) => {
-    setCategories(categories.filter((cat) => cat.id !== id));
+  // App Form State
+  const [newApp, setNewApp] = useState({ name: "", description: "" });
+
+  useEffect(() => {
+    setActiveTab(tab);
+    resetForms();
+  }, [tab]);
+
+  const resetForms = () => {
+    setShowAddForm(false);
+    setEditingId(null);
+    setNewCategory({ name: "", icon: "📝", color: "gray" });
+    setNewPerson({ name: "", notes: "" });
+    setNewCard({ name: "", lastFour: "", type: "visa" });
+    setNewApp({ name: "", description: "" });
   };
 
-  const handleDeleteSpender = (id: string) => {
-    setSpenders(spenders.filter((spender) => spender.id !== id));
-  };
+  // --- Data Fetching ---
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await fetch(`/api/categories?userId=${USER_ID}`);
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      return res.json();
+    },
+  });
 
-  const handleDeleteCard = (id: string) => {
-    setCreditCards(creditCards.filter((card) => card.id !== id));
-  };
+  const { data: people = [] } = useQuery<Person[]>({
+    queryKey: ["people"],
+    queryFn: async () => {
+      const res = await fetch(`/api/people?userId=${USER_ID}`);
+      if (!res.ok) throw new Error("Failed to fetch people");
+      return res.json();
+    },
+  });
 
-  const handleAddCategory = () => {
-    if (newItem.name.trim()) {
-      const newCategory: Category = {
-        id: Math.random().toString(),
-        name: newItem.name,
-        icon: newItem.icon,
-        color: "gray",
+  const { data: creditCards = [] } = useQuery<CreditCard[]>({
+    queryKey: ["credit-cards"],
+    queryFn: async () => {
+      const res = await fetch(`/api/credit-cards?userId=${USER_ID}`);
+      if (!res.ok) throw new Error("Failed to fetch credit cards");
+      return res.json();
+    },
+  });
+
+  const { data: paymentMethods = [] } = useQuery<PaymentMethod[]>({
+    queryKey: ["payment-methods"],
+    queryFn: async () => {
+      const res = await fetch("/api/payment-methods");
+      if (!res.ok) throw new Error("Failed to fetch payment methods");
+      return res.json();
+    },
+  });
+
+  // --- Mutations ---
+
+  // 1. Categories
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+      });
+      if (!res.ok) throw new Error("Failed to create category");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      resetForms();
+      toast({ title: "Category created" });
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async (data: Partial<Category> & { id: number }) => {
+      const res = await fetch(`/api/categories/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update category");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      resetForms();
+      toast({ title: "Category updated" });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/categories/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      toast({ title: "Category deleted" });
+    },
+  });
+
+  // 2. People (Spenders)
+  const createPersonMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/people", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+      });
+      if (!res.ok) throw new Error("Failed to create person");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+      resetForms();
+      toast({ title: "Person added" });
+    },
+  });
+
+  const updatePersonMutation = useMutation({
+    mutationFn: async (data: Partial<Person> & { id: number }) => {
+      const res = await fetch(`/api/people/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update person");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+      resetForms();
+      toast({ title: "Person updated" });
+    },
+  });
+
+  const deletePersonMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/people/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["people"] });
+      toast({ title: "Person deleted" });
+    },
+  });
+
+  // 3. Credit Cards
+  const createCardMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // 1. Fetch current payment methods to see if we have one
+      let res = await fetch("/api/payment-methods");
+      if (!res.ok) throw new Error("Failed to check payment methods");
+      let pms = await res.json();
+
+      // 2. Try to find a suitable payment method
+      let pmId = pms.find((p: any) => p.name === "Credit Card" || p.name === "Credit Cards")?.id;
+
+      // 3. Fallback: use the first one if available
+      if (!pmId && pms.length > 0) {
+        pmId = pms[0].id;
+      }
+
+      // 4. If absolutely no payment methods exist, create a default one
+      if (!pmId) {
+        const createPmRes = await fetch("/api/payment-methods", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Credit Card", isSystem: true, isActive: true })
+        });
+
+        if (!createPmRes.ok) throw new Error("Failed to create default payment method");
+
+        const newPm = await createPmRes.json();
+        pmId = newPm.id;
+      }
+
+      const payload = {
+        userId: USER_ID,
+        paymentMethodId: pmId,
+        cardName: data.name,
+        last4: data.lastFour,
+        isActive: true,
+        bankName: data.type, // Map UI 'type' to backend 'bankName'
       };
-      setCategories([...categories, newCategory]);
-      setNewItem({ name: "", email: "", icon: "📝" });
-      setShowAddForm(false);
+
+      const cardRes = await fetch("/api/credit-cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!cardRes.ok) throw new Error("Failed to create card");
+      return cardRes.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-methods"] }); // Refresh PMs too
+      resetForms();
+      toast({ title: "Credit Card added" });
+    },
+    onError: (err) => {
+      toast({ title: "Error adding card", description: err.message, variant: "destructive" });
+    }
+  });
+
+  const updateCardMutation = useMutation({
+    mutationFn: async (data: any & { id: number }) => {
+      const payload: any = {
+        cardName: data.name,
+        last4: data.lastFour,
+        bankName: data.type,
+      };
+
+      const res = await fetch(`/api/credit-cards/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to update credit card");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      resetForms();
+      toast({ title: "Credit Card updated" });
+    },
+  });
+
+  const deleteCardMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/credit-cards/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit-cards"] });
+      toast({ title: "Card deleted" });
+    },
+  });
+
+  // Expense Apps
+  const { data: expenseApps = [] } = useQuery<ExpenseApp[]>({
+    queryKey: ["expense-apps"],
+    queryFn: async () => {
+      const res = await fetch(`/api/expense-apps?userId=${USER_ID}`);
+      if (!res.ok) throw new Error("Failed to fetch expense apps");
+      return res.json();
+    },
+  });
+
+  const createAppMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/expense-apps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+      });
+      if (!res.ok) throw new Error("Failed to create app");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-apps"] });
+      resetForms();
+      toast({ title: "App added" });
+    },
+  });
+
+  const updateAppMutation = useMutation({
+    mutationFn: async (data: Partial<ExpenseApp> & { id: number }) => {
+      const res = await fetch(`/api/expense-apps/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update app");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-apps"] });
+      resetForms();
+      toast({ title: "App updated" });
+    },
+  });
+
+  const deleteAppMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`/api/expense-apps/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expense-apps"] });
+      toast({ title: "App deleted" });
+    },
+  });
+
+
+  // --- Handlers ---
+  const handleSaveCategory = () => {
+    if (!newCategory.name.trim()) return;
+
+    if (editingId) {
+      updateCategoryMutation.mutate({
+        id: editingId,
+        name: newCategory.name,
+        icon: newCategory.icon,
+        color: newCategory.color,
+      });
+    } else {
+      createCategoryMutation.mutate({
+        name: newCategory.name,
+        icon: newCategory.icon,
+        color: newCategory.color,
+      });
     }
   };
 
-  const handleAddSpender = () => {
-    if (newItem.name.trim()) {
-      const newSpender: Spender = {
-        id: Math.random().toString(),
-        name: newItem.name,
-        email: newItem.email,
-      };
-      setSpenders([...spenders, newSpender]);
-      setNewItem({ name: "", email: "", icon: "📝" });
-      setShowAddForm(false);
+  const handleEditCategory = (category: Category) => {
+    setEditingId(category.id);
+    setNewCategory({
+      name: category.name,
+      icon: category.icon || "📝",
+      color: category.color || "gray",
+    });
+    setShowAddForm(true);
+  };
+
+  const handleSavePerson = () => {
+    if (!newPerson.name.trim()) return;
+
+    if (editingId) {
+      updatePersonMutation.mutate({
+        id: editingId,
+        name: newPerson.name,
+        notes: newPerson.notes,
+        relationshipType: ""
+      });
+    } else {
+      createPersonMutation.mutate({
+        name: newPerson.name,
+        notes: newPerson.notes,
+        relationshipType: ""
+      });
     }
   };
 
-  const handleAddCard = () => {
-    if (newCard.name.trim() && newCard.lastFour.trim()) {
-      const card: CreditCard = {
-        id: Math.random().toString(),
-        name: newCard.name,
-        lastFour: newCard.lastFour,
-        type: newCard.type,
-      };
-      setCreditCards([...creditCards, card]);
-      setNewCard({ name: "", lastFour: "", type: "visa" });
-      setShowAddForm(false);
+  const handleEditPerson = (person: Person) => {
+    setEditingId(person.id);
+    setNewPerson({
+      name: person.name,
+      notes: person.notes || "",
+    });
+    setShowAddForm(true);
+  };
+
+  const handleSaveCard = () => {
+    if (!newCard.name.trim() || !newCard.lastFour.trim()) return;
+
+    if (editingId) {
+      updateCardMutation.mutate({
+        id: editingId,
+        ...newCard
+      });
+    } else {
+      createCardMutation.mutate(newCard);
     }
   };
+
+  const handleEditCard = (card: CreditCard) => {
+    setEditingId(card.id);
+    setNewCard({
+      name: card.cardName,
+      lastFour: card.last4 || "",
+      type: (card.bankName as any) || "visa",
+    });
+    setShowAddForm(true);
+  };
+
+  const handleSaveApp = () => {
+    if (!newApp.name.trim()) return;
+
+    if (editingId) {
+      updateAppMutation.mutate({
+        id: editingId,
+        name: newApp.name,
+        description: newApp.description,
+      });
+    } else {
+      createAppMutation.mutate({
+        name: newApp.name,
+        description: newApp.description,
+      });
+    }
+  };
+
+  const handleEditApp = (app: ExpenseApp) => {
+    setEditingId(app.id);
+    setNewApp({
+      name: app.name,
+      description: app.description || "",
+    });
+    setShowAddForm(true);
+  };
+
+  const isSaving =
+    createCategoryMutation.isPending || updateCategoryMutation.isPending ||
+    createPersonMutation.isPending || updatePersonMutation.isPending ||
+    createCardMutation.isPending || updateCardMutation.isPending ||
+    createAppMutation.isPending || updateAppMutation.isPending;
 
   return (
     <Layout>
@@ -134,36 +488,42 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-border">
+        <div className="flex gap-2 border-b border-border overflow-x-auto">
           <button
             onClick={() => setActiveTab("categories")}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeTab === "categories"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === "categories"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
           >
             Categories
           </button>
           <button
             onClick={() => setActiveTab("spenders")}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeTab === "spenders"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === "spenders"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
           >
             Spenders
           </button>
           <button
             onClick={() => setActiveTab("cards")}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeTab === "cards"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === "cards"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
           >
             Credit Cards
+          </button>
+          <button
+            onClick={() => setActiveTab("apps")}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === "apps"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Apps
           </button>
         </div>
 
@@ -174,37 +534,50 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
               <h2 className="text-xl font-bold text-foreground">
                 Expense Categories
               </h2>
-              <Button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Category
-              </Button>
+              {!showAddForm && (
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Category
+                </Button>
+              )}
             </div>
 
             {showAddForm && (
-              <Card className="p-4 bg-muted/30">
-                <div className="flex gap-3">
+              <Card className="p-4 bg-muted/30 relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-6 w-6 p-0 md:hidden"
+                  onClick={resetForms}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+                <div className="flex gap-3 flex-col sm:flex-row">
                   <Input
                     placeholder="Category name"
-                    value={newItem.name}
+                    value={newCategory.name}
                     onChange={(e) =>
-                      setNewItem({ ...newItem, name: e.target.value })
+                      setNewCategory({ ...newCategory, name: e.target.value })
                     }
                   />
                   <Input
-                    placeholder="Icon"
-                    value={newItem.icon}
+                    placeholder="Icon (e.g. 🍔)"
+                    value={newCategory.icon}
                     onChange={(e) =>
-                      setNewItem({ ...newItem, icon: e.target.value })
+                      setNewCategory({ ...newCategory, icon: e.target.value })
                     }
+                    className="sm:w-24"
                     maxLength={2}
                   />
-                  <Button onClick={handleAddCategory}>Save</Button>
+                  <Button onClick={handleSaveCategory} disabled={isSaving}>
+                    {isSaving ? "Saving..." : (editingId ? "Update" : "Save")}
+                  </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={resetForms}
                   >
                     Cancel
                   </Button>
@@ -219,20 +592,20 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                   className="p-4 flex items-center justify-between hover:shadow-md transition-all"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{category.icon}</span>
+                    <span className="text-3xl">{category.icon || "📁"}</span>
                     <h3 className="font-semibold text-foreground">
                       {category.name}
                     </h3>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDeleteCategory(category.id)}
+                      onClick={() => deleteCategoryMutation.mutate(category.id)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -240,6 +613,9 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                 </Card>
               ))}
             </div>
+            {categories.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">No categories found. Add one to get started!</div>
+            )}
           </div>
         )}
 
@@ -247,37 +623,49 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
         {activeTab === "spenders" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-foreground">Spenders</h2>
-              <Button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Spender
-              </Button>
+              <h2 className="text-xl font-bold text-foreground">Spenders (People)</h2>
+              {!showAddForm && (
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Spender
+                </Button>
+              )}
             </div>
 
             {showAddForm && (
-              <Card className="p-4 bg-muted/30">
+              <Card className="p-4 bg-muted/30 relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-6 w-6 p-0 md:hidden"
+                  onClick={resetForms}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
                 <div className="flex gap-3 flex-col md:flex-row">
                   <Input
                     placeholder="Name"
-                    value={newItem.name}
+                    value={newPerson.name}
                     onChange={(e) =>
-                      setNewItem({ ...newItem, name: e.target.value })
+                      setNewPerson({ ...newPerson, name: e.target.value })
                     }
                   />
                   <Input
-                    placeholder="Email (optional)"
-                    value={newItem.email}
+                    placeholder="Notes (optional)"
+                    value={newPerson.notes}
                     onChange={(e) =>
-                      setNewItem({ ...newItem, email: e.target.value })
+                      setNewPerson({ ...newPerson, notes: e.target.value })
                     }
                   />
-                  <Button onClick={handleAddSpender}>Save</Button>
+                  <Button onClick={handleSavePerson} disabled={isSaving}>
+                    {isSaving ? "Saving..." : (editingId ? "Update" : "Save")}
+                  </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={resetForms}
                   >
                     Cancel
                   </Button>
@@ -286,39 +674,43 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
             )}
 
             <div className="space-y-3">
-              {spenders.map((spender) => (
+              {people.map((person) => (
                 <Card
-                  key={spender.id}
+                  key={person.id}
                   className="p-4 flex items-center justify-between hover:shadow-md transition-all"
                 >
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      {spender.name}
+                      {person.name}
                     </h3>
-                    {spender.email && (
+                    {person.notes && (
                       <p className="text-sm text-muted-foreground">
-                        {spender.email}
+                        {person.notes}
                       </p>
                     )}
+                    <p className="text-xs text-muted-foreground uppercase mt-1">
+                      {person.relationshipType}
+                    </p>
                   </div>
-                  {spender.id !== "1" && (
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDeleteSpender(spender.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditPerson(person)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => deletePersonMutation.mutate(person.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>
+            {people.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">No people added yet.</div>
+            )}
           </div>
         )}
 
@@ -329,17 +721,27 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
               <h2 className="text-xl font-bold text-foreground">
                 Credit Cards
               </h2>
-              <Button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Card
-              </Button>
+              {!showAddForm && (
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Card
+                </Button>
+              )}
             </div>
 
             {showAddForm && (
-              <Card className="p-4 bg-muted/30">
+              <Card className="p-4 bg-muted/30 relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-6 w-6 p-0 md:hidden"
+                  onClick={resetForms}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
                 <div className="flex gap-3 flex-col md:flex-row">
                   <Input
                     placeholder="Card Name (e.g., Personal Visa)"
@@ -361,11 +763,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                     onChange={(e) =>
                       setNewCard({
                         ...newCard,
-                        type: e.target.value as
-                          | "visa"
-                          | "mastercard"
-                          | "amex"
-                          | "other",
+                        type: e.target.value,
                       })
                     }
                     className="px-3 py-2 bg-background border border-border rounded-lg text-foreground cursor-pointer"
@@ -375,13 +773,12 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                     <option value="amex">American Express</option>
                     <option value="other">Other</option>
                   </select>
-                  <Button onClick={handleAddCard}>Save</Button>
+                  <Button onClick={handleSaveCard} disabled={isSaving}>
+                    {isSaving ? "Saving..." : (editingId ? "Update" : "Save")}
+                  </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setNewCard({ name: "", lastFour: "", type: "visa" });
-                    }}
+                    onClick={resetForms}
                   >
                     Cancel
                   </Button>
@@ -401,21 +798,22 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
 
                   <div className="relative space-y-4">
                     <div className="text-lg font-bold tracking-wider">
-                      {card.type.toUpperCase()}
+                      {card.bankName ? card.bankName.toUpperCase() : "CARD"}
                     </div>
                     <div className="text-2xl font-bold tracking-widest">
-                      •••• {card.lastFour}
+                      •••• {card.last4}
                     </div>
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-xs text-white/70 mb-1">CARD NAME</p>
-                        <p className="font-semibold text-sm">{card.name}</p>
+                        <p className="font-semibold text-sm">{card.cardName}</p>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-white hover:bg-white/20"
+                          onClick={() => handleEditCard(card)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -423,7 +821,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                           variant="ghost"
                           size="sm"
                           className="text-white hover:bg-white/20"
-                          onClick={() => handleDeleteCard(card.id)}
+                          onClick={() => deleteCardMutation.mutate(card.id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -432,6 +830,130 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
                   </div>
                 </Card>
               ))}
+            </div>
+            {creditCards.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">No cards added yet.</div>
+            )}
+          </div>
+        )}
+
+        {/* Apps Tab */}
+        {activeTab === "apps" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  Expense Apps
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage apps like Swiggy, Uber, Zomato etc. for automatic descriptions.
+                </p>
+              </div>
+              {!showAddForm && (
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add App
+                </Button>
+              )}
+            </div>
+
+            {showAddForm && (
+              <Card className="p-4 bg-muted/30 relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-6 w-6 p-0 md:hidden"
+                  onClick={resetForms}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+                <div className="flex gap-3 flex-col md:flex-row">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      placeholder="App Name (e.g., Swiggy, Uber)"
+                      value={newApp.name}
+                      onChange={(e) =>
+                        setNewApp({ ...newApp, name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex-[2] space-y-2">
+                    <Input
+                      placeholder="Description (optional)"
+                      value={newApp.description}
+                      onChange={(e) =>
+                        setNewApp({ ...newApp, description: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveApp} disabled={isSaving}>
+                      {isSaving ? "Saving..." : (editingId ? "Update" : "Save")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={resetForms}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {expenseApps.map((app) => (
+                <Card
+                  key={app.id}
+                  className="p-4 hover:shadow-md transition-shadow relative group"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-foreground">{app.name}</h3>
+                      {app.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {app.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleEditApp(app)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                          deleteAppMutation.mutate(app.id);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              {expenseApps.length === 0 && !showAddForm && (
+                <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                  <p>No expense apps added yet.</p>
+                  <Button
+                    variant="link"
+                    onClick={() => setShowAddForm(true)}
+                    className="mt-2"
+                  >
+                    Add your first app
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

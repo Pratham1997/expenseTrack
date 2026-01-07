@@ -37,6 +37,7 @@ const App = () => (
             element={<Settings tab="spenders" />}
           />
           <Route path="/settings/cards" element={<Settings tab="cards" />} />
+          <Route path="/settings/apps" element={<Settings tab="apps" />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
