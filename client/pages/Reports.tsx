@@ -22,7 +22,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
-import { Calendar, TrendingUp, Users, Smartphone } from "lucide-react";
+import { Calendar, TrendingUp, Users, Smartphone, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
 
@@ -144,6 +144,30 @@ export default function Reports() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Top 10 apps
   }, [expenses, selectedMonth]);
+
+  const handlePrevMonth = () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const date = new Date(year, month - 1, 1);
+    date.setMonth(date.getMonth() - 1);
+    const newMonthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedMonth(newMonthStr);
+  };
+
+  const handlePrevYear = () => {
+    setSelectedYear((prev) => (parseInt(prev) - 1).toString());
+  };
+
+  const handleNextYear = () => {
+    setSelectedYear((prev) => (parseInt(prev) + 1).toString());
+  };
+
+  const handleNextMonth = () => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const date = new Date(year, month - 1, 1);
+    date.setMonth(date.getMonth() + 1);
+    const newMonthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedMonth(newMonthStr);
+  };
 
   // Spender breakdown for selected month
   const spenderData = useMemo(() => {
@@ -357,12 +381,30 @@ export default function Reports() {
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Select Month
                   </label>
-                  <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-4 py-2 bg-background border border-border rounded-lg text-foreground"
-                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePrevMonth}
+                      className="h-10 w-10"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <input
+                      type="month"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="px-4 py-2 bg-background border border-border rounded-lg text-foreground flex-1 sm:flex-none"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleNextMonth}
+                      className="h-10 w-10"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-6">
@@ -643,14 +685,32 @@ export default function Reports() {
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Select Year
                   </label>
-                  <input
-                    type="number"
-                    min="2000"
-                    max={new Date().getFullYear() + 1}
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    className="px-4 py-2 bg-background border border-border rounded-lg text-foreground w-32"
-                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePrevYear}
+                      className="h-10 w-10"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <input
+                      type="number"
+                      min="2000"
+                      max={new Date().getFullYear() + 1}
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="px-4 py-2 bg-background border border-border rounded-lg text-foreground w-24 text-center"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleNextYear}
+                      className="h-10 w-10"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-6">
