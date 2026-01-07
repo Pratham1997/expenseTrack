@@ -160,6 +160,84 @@ export default function Reports() {
     }));
   }, [expenses, selectedMonth]);
 
+  // Yearly Category breakdown
+  const yearlyCategoryData = useMemo(() => {
+    const categories: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .forEach((exp) => {
+        const catName = exp.category?.name || "Uncategorized";
+        categories[catName] = (categories[catName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(categories)
+      .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+      .sort((a, b) => b.value - a.value);
+  }, [expenses, selectedYear]);
+
+  // Yearly App breakdown
+  const yearlyAppData = useMemo(() => {
+    const apps: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .forEach((exp) => {
+        const appName = exp.expenseApp?.name || "Manual";
+        apps[appName] = (apps[appName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(apps)
+      .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+      .sort((a, b) => b.value - a.value);
+  }, [expenses, selectedYear]);
+
+  // Yearly Payment Method breakdown
+  const yearlyPaymentMethodData = useMemo(() => {
+    const methods: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .forEach((exp) => {
+        const methodName = exp.paymentMethod?.name || "Unknown";
+        methods[methodName] = (methods[methodName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(methods)
+      .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+      .sort((a, b) => b.value - a.value);
+  }, [expenses, selectedYear]);
+
+  // Yearly Spender breakdown
+  const yearlySpenderData = useMemo(() => {
+    const spenders: Record<string, number> = {};
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .forEach((exp) => {
+        const spenderName = exp.paidByPerson?.name || "Me";
+        spenders[spenderName] = (spenders[spenderName] || 0) + parseFloat(exp.amountConverted);
+      });
+    return Object.entries(spenders)
+      .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(2)) }))
+      .sort((a, b) => b.value - a.value);
+  }, [expenses, selectedYear]);
+
+  // Monthly trend specifically for the selected year
+  const selectedYearTrend = useMemo(() => {
+    const monthTotals: Record<number, number> = {};
+    // Initialize all months to 0
+    for (let i = 1; i <= 12; i++) monthTotals[i] = 0;
+
+    expenses
+      .filter((exp) => exp.expenseDate.startsWith(selectedYear))
+      .forEach((exp) => {
+        const month = parseInt(exp.expenseDate.substring(5, 7));
+        monthTotals[month] += parseFloat(exp.amountConverted);
+      });
+
+    return Object.entries(monthTotals).map(([month, amount]) => {
+      const date = new Date(parseInt(selectedYear), parseInt(month) - 1, 1);
+      return {
+        month: date.toLocaleDateString("en-US", { month: "short" }),
+        amount: parseFloat(amount.toFixed(2)),
+      };
+    });
+  }, [expenses, selectedYear]);
+
   // Day of week analysis
   const dayOfWeekData = useMemo(() => {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -588,18 +666,15 @@ export default function Reports() {
             {/* Yearly Trend Chart */}
             <Card className="p-6">
               <h3 className="text-lg font-bold text-foreground mb-4">
-                Monthly Trend
+                Monthly Trend ({selectedYear})
               </h3>
-              {monthlyData.length > 0 ? (
+              {selectedYearTrend.some(d => d.amount > 0) ? (
                 <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={monthlyData}>
+                  <LineChart data={selectedYearTrend}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="month"
                       stroke="currentColor"
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
                     />
                     <YAxis stroke="currentColor" />
                     <Tooltip
@@ -613,16 +688,141 @@ export default function Reports() {
                       strokeWidth={2}
                       dot={{ fill: "#8b5cf6", r: 4 }}
                       activeDot={{ r: 6 }}
-                      name="Monthly Expense"
+                      name="Monthly Total"
                     />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-96 flex items-center justify-center text-muted-foreground">
-                  No data available
+                  No data available for this year
                 </div>
               )}
             </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Category Breakdown */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Expenses by Category
+                </h3>
+                {yearlyCategoryData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={yearlyCategoryData} layout="vertical" margin={{ left: 40, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        stroke="currentColor"
+                        width={100}
+                        fontSize={12}
+                      />
+                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {yearlyCategoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[350px] flex items-center justify-center text-muted-foreground">No data available</div>
+                )}
+              </Card>
+
+              {/* App Breakdown */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-primary" />
+                  Expenses by App
+                </h3>
+                {yearlyAppData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={yearlyAppData} layout="vertical" margin={{ left: 40, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        stroke="currentColor"
+                        width={100}
+                        fontSize={12}
+                      />
+                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {yearlyAppData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[350px] flex items-center justify-center text-muted-foreground">No data available</div>
+                )}
+              </Card>
+
+              {/* Payment Method Breakdown */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4">
+                  Payment Methods
+                </h3>
+                {yearlyPaymentMethodData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={yearlyPaymentMethodData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {yearlyPaymentMethodData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">No data available</div>
+                )}
+              </Card>
+
+              {/* Spender Breakdown */}
+              <Card className="p-6">
+                <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  Expenses by Spender
+                </h3>
+                {yearlySpenderData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={yearlySpenderData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {yearlySpenderData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">No data available</div>
+                )}
+              </Card>
+            </div>
 
             {/* Yearly Summary Table */}
             <Card className="p-6">
