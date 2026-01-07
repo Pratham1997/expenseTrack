@@ -211,10 +211,6 @@ export default function Dashboard() {
                           <div className="flex items-center gap-2 mt-1">
                             <span
                               className={`text-xs px-2 py-1 rounded-full font-medium ${safeBadgeClass}`}
-                              style={{
-                                backgroundColor: expense.category?.color ? `${expense.category.color}20` : undefined,
-                                color: expense.category?.color || undefined,
-                              }}
                             >
                               {expense.category?.name || "Uncategorized"}
                             </span>
