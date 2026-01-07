@@ -343,18 +343,28 @@ export default function Reports() {
                 </h3>
                 {categoryData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) =>
-                          `${name}: ${formatCurrency(value)}`
-                        }
-                        outerRadius={80}
-                        fill="#8884d8"
+                    <BarChart
+                      data={categoryData}
+                      layout="vertical"
+                      margin={{ left: 20, right: 30, top: 10, bottom: 10 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E2E8F0" />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={100}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar
                         dataKey="value"
+                        fill="hsl(var(--primary))"
+                        radius={[0, 4, 4, 0]}
+                        barSize={20}
                       >
                         {categoryData.map((entry, index) => (
                           <Cell
@@ -365,13 +375,8 @@ export default function Reports() {
                             }
                           />
                         ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value) =>
-                          formatCurrency(value as number)
-                        }
-                      />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-72 flex items-center justify-center text-muted-foreground">
