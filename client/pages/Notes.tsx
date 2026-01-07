@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Save, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, StickyNote, Bold, Italic, Underline, List, ListOrdered } from "lucide-react";
+import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -21,6 +22,7 @@ export default function Notes() {
     const [noteContent, setNoteContent] = useState("");
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const editorRef = useRef<HTMLDivElement>(null);
 
     // Derived state for year/month
     const year = currentDate.getFullYear();
@@ -40,24 +42,32 @@ export default function Notes() {
 
     const currentNote = notesList[0]; // Should only be one per month/user
 
-    // Update local state when data loads
+    // Update local state and editor content when data loads
     useEffect(() => {
-        if (currentNote) {
-            setNoteContent(currentNote.notes || "");
-        } else {
-            setNoteContent("");
+        const content = currentNote?.notes || "";
+        setNoteContent(content);
+        if (editorRef.current && editorRef.current.innerHTML !== content) {
+            editorRef.current.innerHTML = content;
         }
     }, [currentNote]);
+
+    // Update editor content when switching date
+    useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== noteContent) {
+            editorRef.current.innerHTML = noteContent;
+        }
+    }, [currentDate]);
 
     // Mutation to save/update note
     const saveNoteMutation = useMutation({
         mutationFn: async (content: string) => {
+            const cleanContent = content === "<br>" ? "" : content; // Handle empty editor artifacts
             if (currentNote) {
                 // Update existing
                 const res = await fetch(`/api/monthly-notes/${currentNote.id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ notes: content }),
+                    body: JSON.stringify({ notes: cleanContent }),
                 });
                 if (!res.ok) throw new Error("Failed to update note");
                 return res.json();
@@ -70,7 +80,7 @@ export default function Notes() {
                         userId: USER_ID,
                         year,
                         month,
-                        notes: content,
+                        notes: cleanContent,
                     }),
                 });
                 if (!res.ok) throw new Error("Failed to create note");
@@ -102,13 +112,26 @@ export default function Notes() {
     };
 
     const handleSave = () => {
-        saveNoteMutation.mutate(noteContent);
+        // Use the actual innerHTML from the editor ref
+        const content = editorRef.current?.innerHTML || "";
+        saveNoteMutation.mutate(content);
+    };
+
+    const execCommand = (command: string) => {
+        document.execCommand(command, false);
+        editorRef.current?.focus();
     };
 
     const monthName = currentDate.toLocaleDateString("en-US", {
         month: "long",
         year: "numeric",
     });
+
+    const handleInput = () => {
+        if (editorRef.current) {
+            setNoteContent(editorRef.current.innerHTML);
+        }
+    };
 
     return (
         <Layout>
@@ -148,19 +171,69 @@ export default function Notes() {
                 </div>
 
                 {/* Editor Area */}
-                <Card className="min-h-[500px] flex flex-col p-6 shadow-sm">
+                <Card className="min-h-[500px] flex flex-col p-6 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-1 mb-4 pb-4 border-b border-border">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => execCommand('bold')}
+                            className="p-2 h-8 w-8"
+                            title="Bold"
+                        >
+                            <Bold className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => execCommand('italic')}
+                            className="p-2 h-8 w-8"
+                            title="Italic"
+                        >
+                            <Italic className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => execCommand('underline')}
+                            className="p-2 h-8 w-8"
+                            title="Underline"
+                        >
+                            <Underline className="w-4 h-4" />
+                        </Button>
+                        <div className="w-[1px] h-4 bg-border mx-1" />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => execCommand('insertUnorderedList')}
+                            className="p-2 h-8 w-8"
+                            title="Bullet List"
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => execCommand('insertOrderedList')}
+                            className="p-2 h-8 w-8"
+                            title="Numbered List"
+                        >
+                            <ListOrdered className="w-4 h-4" />
+                        </Button>
+                    </div>
+
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center text-muted-foreground">
                             Loading note...
                         </div>
                     ) : (
                         <>
-                            <textarea
-                                value={noteContent}
-                                onChange={(e) => setNoteContent(e.target.value)}
-                                placeholder={`Write your notes for ${monthName} here...`}
-                                className="flex-1 w-full resize-none bg-transparent border-none focus:ring-0 text-lg leading-relaxed text-foreground placeholder-muted-foreground outline-none"
-                                spellCheck={false}
+                            <div
+                                ref={editorRef}
+                                contentEditable
+                                onInput={handleInput}
+                                className="flex-1 w-full bg-transparent overflow-auto text-lg leading-relaxed text-foreground placeholder-muted-foreground focus:outline-none min-h-[400px]"
+                                style={{ outline: 'none' }}
+                                data-placeholder={`Write your notes for ${monthName} here...`}
                             />
                             <div className="flex justify-end pt-4 border-t border-border mt-4">
                                 <Button
