@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import {
   Plus,
   Calendar,
   Download,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -112,6 +114,19 @@ export default function Expenses() {
   const [sort, setSort] = useState<string>("Date (Newest)");
   const [groupBy, setGroupBy] = useState<GroupBy>("None");
   const [showFilters, setShowFilters] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  // Reset collapsed groups when grouping changes
+  useEffect(() => {
+    setCollapsedGroups({});
+  }, [groupBy]);
+
+  const toggleGroup = (groupName: string) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  };
 
   // --- Mutations ---
   const deleteExpenseMutation = useMutation({
@@ -534,7 +549,15 @@ export default function Expenses() {
           {Object.entries(groupedExpenses).map(([group, groupExpenses]) => (
             <div key={group}>
               {groupBy !== "None" && (
-                <div className="flex items-center gap-3 mb-4 px-1">
+                <div
+                  className="flex items-center gap-3 mb-4 px-1 cursor-pointer hover:opacity-80 transition-opacity w-fit"
+                  onClick={() => toggleGroup(group)}
+                >
+                  {collapsedGroups[group] ? (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
                   <h3 className="text-lg font-semibold text-foreground">
                     {group}
                   </h3>
@@ -545,95 +568,97 @@ export default function Expenses() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                {groupExpenses.map((expense) => {
-                  const safeBadgeClass = "bg-secondary text-secondary-foreground";
+              {!collapsedGroups[group] && (
+                <div className="space-y-3">
+                  {groupExpenses.map((expense) => {
+                    const safeBadgeClass = "bg-secondary text-secondary-foreground";
 
-                  return (
-                    <Card
-                      key={expense.id}
-                      className="p-4 hover:shadow-md transition-all hover:border-primary/50"
-                    >
-                      <div className="flex items-start gap-4">
-                        {/* Icon */}
-                        <div
-                          className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg flex-shrink-0"
-                        >
-                          {expense.category?.icon || "💰"}
-                        </div>
+                    return (
+                      <Card
+                        key={expense.id}
+                        className="p-4 hover:shadow-md transition-all hover:border-primary/50"
+                      >
+                        <div className="flex items-start gap-4">
+                          {/* Icon */}
+                          <div
+                            className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg flex-shrink-0"
+                          >
+                            {expense.category?.icon || "💰"}
+                          </div>
 
-                        {/* Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-foreground">
-                                {expense.notes || "Expense"}
-                                {expense.expenseApp && (
-                                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                    {expense.expenseApp.name}
+                          {/* Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-foreground">
+                                  {expense.notes || "Expense"}
+                                  {expense.expenseApp && (
+                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                      {expense.expenseApp.name}
+                                    </span>
+                                  )}
+                                </h4>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded-full font-medium ${safeBadgeClass}`}
+                                  >
+                                    {expense.category?.name || "Uncategorized"}
                                   </span>
-                                )}
-                              </h4>
-                              <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <span
-                                  className={`text-xs px-2 py-1 rounded-full font-medium ${safeBadgeClass}`}
-                                >
-                                  {expense.category?.name || "Uncategorized"}
-                                </span>
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                                  {expense.paidByPerson?.name || "Me"}
-                                </span>
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(expense.expenseDate).toLocaleDateString()}
-                                </span>
-                                {expense.paymentMethod && (
                                   <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                                    {expense.paymentMethod.name}
+                                    {expense.paidByPerson?.name || "Me"}
                                   </span>
-                                )}
+                                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(expense.expenseDate).toLocaleDateString()}
+                                  </span>
+                                  {expense.paymentMethod && (
+                                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                                      {expense.paymentMethod.name}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="font-bold text-lg text-foreground">
+                                  {formatCurrency(parseFloat(expense.amountConverted))}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {expense.currencyOriginal}
+                                </p>
                               </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="font-bold text-lg text-foreground">
-                                {formatCurrency(parseFloat(expense.amountConverted))}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {expense.currencyOriginal}
-                              </p>
-                            </div>
                           </div>
-                        </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Link to={`/expenses/${expense.id}/edit`}>
+                          {/* Actions */}
+                          <div className="flex gap-2 flex-shrink-0">
+                            <Link to={`/expenses/${expense.id}/edit`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </Link>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this expense?")) {
+                                  deleteExpenseMutation.mutate(expense.id)
+                                }
+                              }}
                             >
-                              <Edit className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to delete this expense?")) {
-                                deleteExpenseMutation.mutate(expense.id)
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
 
