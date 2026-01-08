@@ -157,6 +157,27 @@ export function CSVImport({ categories, people, paymentMethods, expenseApps }: O
         });
     };
 
+    const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date();
+
+        // Try standard parsing first
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) return parsed;
+
+        // Try DD/MM/YYYY or DD-MM-YYYY
+        const parts = dateStr.split(/[/\-]/);
+        if (parts.length === 3) {
+            // Check if first part is year (YYYY-MM-DD) or last part is year (DD/MM/YYYY)
+            if (parts[0].length === 4) {
+                return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            } else if (parts[2].length === 4) {
+                return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+            }
+        }
+
+        return new Date(); // Fallback to now
+    };
+
     const generatePendingExpenses = () => {
         const results: PendingExpense[] = [];
 
@@ -167,12 +188,13 @@ export function CSVImport({ categories, people, paymentMethods, expenseApps }: O
             const personId = people.find(p => p.name.toLowerCase() === (row[mapping.paidBy] || "").toString().toLowerCase())?.id || null;
             const appId = expenseApps.find(a => a.name.toLowerCase() === (row[mapping.app] || "").toString().toLowerCase())?.id || null;
 
-            const dateObj = useCommonDate ? new Date(commonDate) : (row[mapping.date] ? new Date(row[mapping.date]) : new Date());
+            const dateObj = useCommonDate ? new Date(commonDate) : parseDate((row[mapping.date] || "").toString());
             const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
             const notes = row[mapping.notes] || "";
 
             // Handle breakdown (+) split
-            if (mapping.breakdown && row[mapping.breakdown]) {
+            let processed = false;
+            if (mapping.breakdown && row[mapping.breakdown] && row[mapping.breakdown].toString().trim() !== "") {
                 const parts = row[mapping.breakdown].toString().split("+");
                 parts.forEach((part: string, partIndex: number) => {
                     const amount = parseFloat(part.trim().replace(/[^0-9.]/g, ''));
@@ -190,9 +212,13 @@ export function CSVImport({ categories, people, paymentMethods, expenseApps }: O
                             expenseDate: dateStr,
                             notes,
                         });
+                        processed = true;
                     }
                 });
-            } else if (mapping.amount && row[mapping.amount]) {
+            }
+
+            // Fallback to primary amount if breakdown was not possible or not mapped
+            if (!processed && mapping.amount && row[mapping.amount]) {
                 const rawAmount = parseFloat(row[mapping.amount].toString().replace(/[^0-9.]/g, ''));
                 if (!isNaN(rawAmount)) {
                     results.push({

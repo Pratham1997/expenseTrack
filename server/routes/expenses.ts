@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { expenses } from "../schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -29,7 +29,7 @@ const updateExpenseSchema = createExpenseSchema.partial();
 router.get("/", async (req, res) => {
     try {
         const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
-        const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+        const limit = Math.min(parseInt(req.query.limit as string) || 1000, 1000);
         const offset = parseInt(req.query.offset as string) || 0;
 
         const allExpenses = await db.query.expenses.findMany({
@@ -219,7 +219,7 @@ router.post("/batch", async (req, res) => {
             }
 
             return await tx.query.expenses.findMany({
-                where: sql`${expenses.id} IN (${results.join(",")})`,
+                where: inArray(expenses.id, results),
             });
         });
 
