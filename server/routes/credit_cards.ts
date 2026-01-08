@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { creditCards } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -25,9 +25,10 @@ router.get("/", async (req, res) => {
         const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
 
         const query = db.query.creditCards.findMany({
-            where: userId
-                ? and(eq(creditCards.userId, userId), eq(creditCards.isActive, true))
-                : eq(creditCards.isActive, true),
+            where: and(
+                eq(creditCards.isActive, true),
+                userId ? eq(creditCards.userId, userId) : sql`1=0`
+            ),
             with: {
                 paymentMethod: true,
             }

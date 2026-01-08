@@ -6,6 +6,8 @@ import { TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
 import { useMemo } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@/contexts/UserContext";
+
 
 // --- Types ---
 // Matches the structure returned by /api/expenses
@@ -29,16 +31,19 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const { userId } = useUser();
+
 
   // --- Data Fetching ---
   const { data: expenses = [], isLoading, error } = useQuery<Expense[]>({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", userId],
     queryFn: async () => {
       // Fetch all for stats
-      const res = await fetch(`/api/expenses?limit=1000`);
+      const res = await fetch(`/api/expenses?userId=${userId}&limit=1000`);
       if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   // --- Stats Calculation ---

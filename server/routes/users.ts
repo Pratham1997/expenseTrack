@@ -60,4 +60,29 @@ router.post("/", async (req, res) => {
     }
 });
 
+// PATCH /api/users/:id
+router.patch("/:id", async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+        const body = createUserSchema.partial().parse(req.body);
+
+        await db.update(users)
+            .set(body)
+            .where(eq(users.id, id));
+
+        const updatedUser = await db.query.users.findFirst({
+            where: eq(users.id, id),
+        });
+
+        res.json(updatedUser);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.errors });
+        }
+        res.status(500).json({ error: "Failed to update user" });
+    }
+});
+
 export default router;

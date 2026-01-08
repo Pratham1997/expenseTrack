@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { people } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -22,9 +22,10 @@ router.get("/", async (req, res) => {
         const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
 
         const query = db.query.people.findMany({
-            where: userId
-                ? and(eq(people.userId, userId), eq(people.isActive, true))
-                : eq(people.isActive, true),
+            where: and(
+                eq(people.isActive, true),
+                userId ? eq(people.userId, userId) : sql`1=0`
+            ),
         });
 
         const results = await query;

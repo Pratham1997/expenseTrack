@@ -6,8 +6,10 @@ import { ChevronLeft, ChevronRight, Save, StickyNote, Bold, Italic, Underline, L
 import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@/contexts/UserContext";
 
-const USER_ID = 1; // Hardcoded for now
+
+
 
 interface MonthlyNote {
     id: number;
@@ -19,6 +21,7 @@ interface MonthlyNote {
 
 export default function Notes() {
     // Pin initial date to the 1st to avoid day overflow issues
+    const { userId } = useUser();
     const [currentDate, setCurrentDate] = useState(() => {
         const d = new Date();
         d.setDate(1);
@@ -35,14 +38,15 @@ export default function Notes() {
 
     // Fetch note for selected month
     const { data: notesList = [], isLoading } = useQuery<MonthlyNote[]>({
-        queryKey: ["monthlyNotes", year, month],
+        queryKey: ["monthlyNotes", userId, year, month],
         queryFn: async () => {
             const res = await fetch(
-                `/api/monthly-notes?userId=${USER_ID}&year=${year}&month=${month}`
+                `/api/monthly-notes?userId=${userId}&year=${year}&month=${month}`
             );
             if (!res.ok) throw new Error("Failed to fetch notes");
             return res.json();
         },
+        enabled: !!userId,
     });
 
     const currentNote = notesList[0]; // Should only be one per month/user
@@ -75,7 +79,8 @@ export default function Notes() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        userId: USER_ID,
+                        userId: userId,
+
                         year,
                         month,
                         notes: cleanContent,

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Wallet, TrendingUp, Settings, Plus, LayoutList, StickyNote } from "lucide-react";
+import { Menu, X, Wallet, TrendingUp, Settings, Plus, LayoutList, StickyNote, ChevronUp, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { UserSwitcher } from "./UserSwitcher";
+import { useUser } from "@/contexts/UserContext";
 
 const NAVIGATION_ITEMS = [
   { path: "/", label: "Dashboard", icon: Wallet },
@@ -14,6 +16,7 @@ const NAVIGATION_ITEMS = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { user } = useUser();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -48,7 +51,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 space-y-2">
+        <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
           {NAVIGATION_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -71,6 +74,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        {/* User Switcher at bottom */}
+        <div className="p-3 border-t border-sidebar-border">
+          <UserSwitcher collapsed={!sidebarOpen} />
+        </div>
 
         {/* Action Button */}
         <div className="p-3 border-t border-sidebar-border">
@@ -113,8 +121,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 />
               </svg>
             </Button>
-            <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
-              U
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
+                {user?.name}
+              </span>
+              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                {user?.name?.[0].toUpperCase()}
+              </div>
             </div>
           </div>
         </div>

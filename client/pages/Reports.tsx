@@ -24,6 +24,8 @@ import {
 } from "recharts";
 import { Calendar, TrendingUp, Users, Smartphone, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@/contexts/UserContext";
+
 import { formatCurrency } from "@/lib/utils";
 
 // --- Types ---
@@ -55,6 +57,7 @@ const COLORS = {
 const CHART_COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
 
 export default function Reports() {
+  const { userId } = useUser();
   const [reportType, setReportType] = useState<"monthly" | "yearly" | "custom">("monthly");
 
   // Default to current month/year
@@ -67,12 +70,13 @@ export default function Reports() {
 
   // --- Data Fetching ---
   const { data: expenses = [], isLoading, error } = useQuery<Expense[]>({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/expenses?limit=1000`);
+      const res = await fetch(`/api/expenses?userId=${userId}&limit=1000`);
       if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
+    enabled: !!userId,
   });
 
 

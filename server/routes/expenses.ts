@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { expenses } from "../schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -9,17 +9,17 @@ const router = Router();
 // Validation schemas
 const createExpenseSchema = z.object({
     userId: z.number(),
-    categoryId: z.number().optional(),
-    paidByPersonId: z.number().optional(),
+    categoryId: z.number().nullable().optional(),
+    paidByPersonId: z.number().nullable().optional(),
     paymentMethodId: z.number(),
-    creditCardId: z.number().optional(),
-    expenseAppId: z.number().optional(),
+    creditCardId: z.number().nullable().optional(),
+    expenseAppId: z.number().nullable().optional(),
     amountOriginal: z.number(),
     currencyOriginal: z.string().length(3),
-    exchangeRate: z.number().optional(),
+    exchangeRate: z.number().nullable().optional(),
     amountConverted: z.number(),
     expenseDate: z.coerce.date(), // Handle string to date conversion
-    notes: z.string().optional(),
+    notes: z.string().nullable().optional(),
     isDeleted: z.boolean().optional(),
 });
 
@@ -28,6 +28,7 @@ const updateExpenseSchema = createExpenseSchema.partial();
 // GET /api/expenses
 router.get("/", async (req, res) => {
     try {
+        const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
         const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
         const offset = parseInt(req.query.offset as string) || 0;
 
@@ -35,7 +36,10 @@ router.get("/", async (req, res) => {
             limit,
             offset,
             orderBy: desc(expenses.expenseDate),
-            where: eq(expenses.isDeleted, false),
+            where: and(
+                eq(expenses.isDeleted, false),
+                userId ? eq(expenses.userId, userId) : undefined
+            ),
             with: {
                 category: true,
                 paymentMethod: true,
@@ -163,6 +167,69 @@ router.delete("/:id", async (req, res) => {
         res.json({ message: "Expense deleted successfully" });
     } catch (error) {
         res.status(500).json({ error: "Failed to delete expense" });
+    }
+});
+
+// DELETE /api/expenses/bulk (Soft Delete)
+router.post("/bulk-delete", async (req, res) => {
+    try {
+        const bulkDeleteSchema = z.object({
+            ids: z.array(z.number()),
+        });
+        const { ids } = bulkDeleteSchema.parse(req.body);
+
+        if (ids.length === 0) return res.status(400).json({ error: "No IDs provided" });
+
+        await db.update(expenses)
+            .set({ isDeleted: true })
+            .where(sql`${expenses.id} IN (${sql.raw(ids.join(","))})`);
+
+        res.json({ message: "Expenses deleted successfully" });
+    } catch (error) {
+        console.error("Bulk delete error:", error);
+        res.status(500).json({ error: "Failed to delete expenses" });
+    }
+});
+
+// POST /api/expenses/batch
+router.post("/batch", async (req, res) => {
+    try {
+        const batchSchema = z.array(createExpenseSchema);
+        const body = batchSchema.parse(req.body);
+
+        const newExpenses = await db.transaction(async (tx) => {
+            const results = [];
+            for (const item of body) {
+                const [result] = await tx.insert(expenses).values({
+                    userId: item.userId,
+                    categoryId: item.categoryId,
+                    paidByPersonId: item.paidByPersonId,
+                    paymentMethodId: item.paymentMethodId,
+                    creditCardId: item.creditCardId,
+                    expenseAppId: item.expenseAppId,
+                    amountOriginal: item.amountOriginal.toString(),
+                    currencyOriginal: item.currencyOriginal,
+                    exchangeRate: item.exchangeRate?.toString(),
+                    amountConverted: item.amountConverted.toString(),
+                    expenseDate: item.expenseDate,
+                    notes: item.notes,
+                    isDeleted: item.isDeleted,
+                }).$returningId();
+                results.push(result.id);
+            }
+
+            return await tx.query.expenses.findMany({
+                where: sql`${expenses.id} IN (${results.join(",")})`,
+            });
+        });
+
+        res.status(201).json(newExpenses);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.errors });
+        }
+        console.error(error);
+        res.status(500).json({ error: "Failed to create batch expenses" });
     }
 });
 

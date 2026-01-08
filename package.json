@@ -27,6 +27,7 @@
     "drizzle-orm": "^0.45.1",
     "express": "^5.1.0",
     "mysql2": "^3.16.0",
+    "papaparse": "^5.5.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -66,6 +67,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.2.1",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@types/three": "^0.176.0",

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { categories } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { log } from "console";
 
@@ -25,9 +25,10 @@ router.get("/", async (req, res) => {
         const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
 
         const query = db.query.categories.findMany({
-            where: userId
-                ? and(eq(categories.userId, userId), eq(categories.isActive, true))
-                : eq(categories.isActive, true),
+            where: and(
+                eq(categories.isActive, true),
+                userId ? eq(categories.userId, userId) : sql`1=0` // Return nothing if no userId provided
+            ),
             with: {
                 user: true,
             }

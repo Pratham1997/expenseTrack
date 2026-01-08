@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/contexts/UserContext";
+
 import { formatCurrency } from "@/lib/utils";
+import { CSVImport } from "@/components/CSVImport";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // --- Types ---
 interface Expense {
@@ -45,7 +49,7 @@ interface FiltersState {
 
 type GroupBy = "None" | "Category" | "Spender" | "Type" | "App" | "Month";
 
-const USER_ID = 1;
+
 
 const SORT_OPTIONS = [
   "Date (Newest)",
@@ -67,26 +71,30 @@ const TIME_FRAMES = [
 
 export default function Expenses() {
   const { toast } = useToast();
+  const { userId } = useUser();
   const queryClient = useQueryClient();
 
   // --- Data Fetching ---
   const { data: expenses = [], isLoading, error } = useQuery<Expense[]>({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/expenses?limit=1000`);
+      const res = await fetch(`/api/expenses?userId=${userId}&limit=1000`);
       if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   const { data: categories = [] } = useQuery<any[]>({
-    queryKey: ["categories"],
-    queryFn: async () => (await fetch(`/api/categories?userId=${USER_ID}`)).json(),
+    queryKey: ["categories", userId],
+    queryFn: async () => (await fetch(`/api/categories?userId=${userId}`)).json(),
+    enabled: !!userId,
   });
 
   const { data: people = [] } = useQuery<any[]>({
-    queryKey: ["people"],
-    queryFn: async () => (await fetch(`/api/people?userId=${USER_ID}`)).json(),
+    queryKey: ["people", userId],
+    queryFn: async () => (await fetch(`/api/people?userId=${userId}`)).json(),
+    enabled: !!userId,
   });
 
   const { data: paymentMethods = [] } = useQuery<any[]>({
@@ -95,8 +103,9 @@ export default function Expenses() {
   });
 
   const { data: expenseApps = [] } = useQuery<any[]>({
-    queryKey: ["expense-apps"],
-    queryFn: async () => (await fetch(`/api/expense-apps?userId=${USER_ID}`)).json(),
+    queryKey: ["expense-apps", userId],
+    queryFn: async () => (await fetch(`/api/expense-apps?userId=${userId}`)).json(),
+    enabled: !!userId,
   });
 
 
@@ -115,6 +124,7 @@ export default function Expenses() {
   const [groupBy, setGroupBy] = useState<GroupBy>("None");
   const [showFilters, setShowFilters] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // Reset expanded groups when grouping changes
   useEffect(() => {
@@ -142,6 +152,42 @@ export default function Expenses() {
       toast({ title: "Error deleting expense", variant: "destructive" });
     }
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await fetch("/api/expenses/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("Failed to delete expenses");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      setSelectedIds(new Set());
+      toast({ title: "Expenses deleted" });
+    },
+    onError: () => {
+      toast({ title: "Error deleting expenses", variant: "destructive" });
+    }
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredAndSortedExpenses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredAndSortedExpenses.map(e => e.id)));
+    }
+  };
 
   // --- Derived State (Filtering & Sorting) ---
   const filteredAndSortedExpenses = useMemo(() => {
@@ -335,12 +381,21 @@ export default function Expenses() {
               <Download className="w-4 h-4" />
               Export CSV
             </Button>
-            <Link to="/expenses/new">
-              <Button size="lg" className="gap-2">
+            <CSVImport
+              categories={categories}
+              people={people}
+              paymentMethods={paymentMethods}
+              expenseApps={expenseApps}
+            />
+            <Button
+              className="flex items-center gap-2"
+              asChild
+            >
+              <Link to="/expenses/new">
                 <Plus className="w-4 h-4" />
                 Add Expense
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -414,6 +469,35 @@ export default function Expenses() {
                 </div>
               </div>
             </div>
+
+            {/* Bulk Action Bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selectedIds.size === filteredAndSortedExpenses.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-sm font-medium">
+                    {selectedIds.size} selected
+                  </span>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete ${selectedIds.size} expenses?`)) {
+                      bulkDeleteMutation.mutate(Array.from(selectedIds));
+                    }
+                  }}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Selected
+                </Button>
+              </div>
+            )}
 
             {/* Expanded Filters */}
             {showFilters && (
@@ -576,9 +660,17 @@ export default function Expenses() {
                     return (
                       <Card
                         key={expense.id}
-                        className="p-4 hover:shadow-md transition-all hover:border-primary/50"
+                        className={`p-4 hover:shadow-md transition-all hover:border-primary/50 ${selectedIds.has(expense.id) ? "border-primary bg-primary/5" : ""}`}
                       >
                         <div className="flex items-start gap-4">
+                          {/* Selection Checkbox */}
+                          <div className="pt-3">
+                            <Checkbox
+                              checked={selectedIds.has(expense.id)}
+                              onCheckedChange={() => toggleSelect(expense.id)}
+                            />
+                          </div>
+
                           {/* Icon */}
                           <div
                             className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-lg flex-shrink-0"

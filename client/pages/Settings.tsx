@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Edit, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/contexts/UserContext";
+
 
 // --- Types ---
 interface Category {
@@ -42,7 +44,7 @@ interface ExpenseApp {
   description: string | null;
 }
 
-const USER_ID = 1; // Hardcoded for now until Auth is ready
+
 
 interface SettingsProps {
   tab?: "categories" | "spenders" | "cards" | "apps";
@@ -50,6 +52,7 @@ interface SettingsProps {
 
 export default function Settings({ tab = "categories" }: SettingsProps) {
   const { toast } = useToast();
+  const { userId } = useUser();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"categories" | "spenders" | "cards" | "apps">(tab);
 
@@ -89,30 +92,33 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
 
   // --- Data Fetching ---
   const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ["categories"],
+    queryKey: ["categories", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/categories?userId=${USER_ID}`);
+      const res = await fetch(`/api/categories?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch categories");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   const { data: people = [] } = useQuery<Person[]>({
-    queryKey: ["people"],
+    queryKey: ["people", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/people?userId=${USER_ID}`);
+      const res = await fetch(`/api/people?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch people");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   const { data: creditCards = [] } = useQuery<CreditCard[]>({
-    queryKey: ["credit-cards"],
+    queryKey: ["credit-cards", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/credit-cards?userId=${USER_ID}`);
+      const res = await fetch(`/api/credit-cards?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch credit cards");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   const { data: paymentMethods = [] } = useQuery<PaymentMethod[]>({
@@ -132,7 +138,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+        body: JSON.stringify({ ...data, userId: userId, isActive: true }),
       });
       if (!res.ok) throw new Error("Failed to create category");
       return res.json();
@@ -177,7 +183,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
       const res = await fetch("/api/people", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+        body: JSON.stringify({ ...data, userId: userId, isActive: true }),
       });
       if (!res.ok) throw new Error("Failed to create person");
       return res.json();
@@ -247,7 +253,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
       }
 
       const payload = {
-        userId: USER_ID,
+        userId: userId,
         paymentMethodId: pmId,
         cardName: data.name,
         last4: data.lastFour,
@@ -310,12 +316,13 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
 
   // Expense Apps
   const { data: expenseApps = [] } = useQuery<ExpenseApp[]>({
-    queryKey: ["expense-apps"],
+    queryKey: ["expense-apps", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/expense-apps?userId=${USER_ID}`);
+      const res = await fetch(`/api/expense-apps?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch expense apps");
       return res.json();
     },
+    enabled: !!userId,
   });
 
   const createAppMutation = useMutation({
@@ -323,7 +330,7 @@ export default function Settings({ tab = "categories" }: SettingsProps) {
       const res = await fetch("/api/expense-apps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, userId: USER_ID, isActive: true }),
+        body: JSON.stringify({ ...data, userId: userId, isActive: true }),
       });
       if (!res.ok) throw new Error("Failed to create app");
       return res.json();

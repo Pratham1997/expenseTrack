@@ -9,8 +9,10 @@ import { ArrowLeft, Plus, Trash2, Layers } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch"; // Assuming we have this or use a button toggle
+import { useUser } from "@/contexts/UserContext";
 
-const USER_ID = 1;
+
+
 
 // --- Types ---
 interface ExpenseFormData {
@@ -40,16 +42,18 @@ export default function ExpenseForm() {
   const isEdit = !!id;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { userId } = useUser();
+
 
   // --- Data Fetching for Dropdowns ---
   const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["categories"],
-    queryFn: async () => (await fetch(`/api/categories?userId=${USER_ID}`)).json(),
+    queryFn: async () => (await fetch(`/api/categories?userId=${userId}`)).json(),
   });
 
   const { data: people = [] } = useQuery<any[]>({
     queryKey: ["people"],
-    queryFn: async () => (await fetch(`/api/people?userId=${USER_ID}`)).json(),
+    queryFn: async () => (await fetch(`/api/people?userId=${userId}`)).json(),
   });
 
   const { data: paymentMethods = [] } = useQuery<any[]>({
@@ -59,12 +63,12 @@ export default function ExpenseForm() {
 
   const { data: creditCards = [] } = useQuery<any[]>({
     queryKey: ["credit-cards"],
-    queryFn: async () => (await fetch(`/api/credit-cards?userId=${USER_ID}`)).json(),
+    queryFn: async () => (await fetch(`/api/credit-cards?userId=${userId}`)).json(),
   });
 
   const { data: expenseApps = [] } = useQuery<any[]>({
     queryKey: ["expense-apps"],
-    queryFn: async () => (await fetch(`/api/expense-apps?userId=${USER_ID}`)).json(),
+    queryFn: async () => (await fetch(`/api/expense-apps?userId=${userId}`)).json(),
   });
 
 
@@ -202,7 +206,8 @@ export default function ExpenseForm() {
       }
 
       const commonPayload = {
-        userId: USER_ID,
+        userId: userId,
+
         categoryId: formData.categoryId ? parseInt(formData.categoryId) : undefined,
         paidByPersonId: formData.paidByPersonId ? parseInt(formData.paidByPersonId) : undefined,
         paymentMethodId: parseInt(formData.paymentMethodId),

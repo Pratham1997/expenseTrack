@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { monthlyNotes } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -23,12 +23,12 @@ router.get("/", async (req, res) => {
         const month = req.query.month ? parseInt(req.query.month as string) : undefined;
 
         const conditions = [];
-        if (userId) conditions.push(eq(monthlyNotes.userId, userId));
+        conditions.push(userId ? eq(monthlyNotes.userId, userId) : sql`1=0`);
         if (year) conditions.push(eq(monthlyNotes.year, year));
         if (month) conditions.push(eq(monthlyNotes.month, month));
 
         const query = db.query.monthlyNotes.findMany({
-            where: conditions.length > 0 ? and(...conditions) : undefined,
+            where: and(...conditions),
         });
 
         const results = await query;
